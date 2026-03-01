@@ -1,0 +1,218 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "Resend Go SDK",
+  "projectDescription": "Official Go SDK for the Resend email API",
+  "theme": "palm",
+  "primaryColor": "#FF5C35",
+  "lightColor": null,
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "guides/sending-emails",
+              "guides/email-templates",
+              "guides/attachments",
+              "guides/batch-emails",
+              "guides/scheduled-emails"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "guides/domains",
+              "guides/contacts",
+              "guides/segments",
+              "guides/broadcasts",
+              "guides/webhooks",
+              "guides/receiving-emails"
+            ]
+          },
+          {
+            "group": "Examples",
+            "pages": [
+              "examples/basic-usage",
+              "examples/templates",
+              "examples/custom-client",
+              "examples/error-handling"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Client",
+            "pages": [
+              "api-reference/client"
+            ]
+          },
+          {
+            "group": "Emails",
+            "pages": [
+              "api-reference/emails/send",
+              "api-reference/emails/get",
+              "api-reference/emails/list",
+              "api-reference/emails/update",
+              "api-reference/emails/cancel",
+              "api-reference/emails/attachments"
+            ]
+          },
+          {
+            "group": "Batch",
+            "pages": [
+              "api-reference/batch/send"
+            ]
+          },
+          {
+            "group": "Templates",
+            "pages": [
+              "api-reference/templates/create",
+              "api-reference/templates/get",
+              "api-reference/templates/list",
+              "api-reference/templates/update",
+              "api-reference/templates/publish",
+              "api-reference/templates/duplicate",
+              "api-reference/templates/delete"
+            ]
+          },
+          {
+            "group": "Domains",
+            "pages": [
+              "api-reference/domains/create",
+              "api-reference/domains/get",
+              "api-reference/domains/list",
+              "api-reference/domains/verify",
+              "api-reference/domains/update",
+              "api-reference/domains/delete"
+            ]
+          },
+          {
+            "group": "Contacts",
+            "pages": [
+              "api-reference/contacts/create",
+              "api-reference/contacts/get",
+              "api-reference/contacts/list",
+              "api-reference/contacts/update",
+              "api-reference/contacts/delete"
+            ]
+          },
+          {
+            "group": "Segments",
+            "pages": [
+              "api-reference/segments/create",
+              "api-reference/segments/get",
+              "api-reference/segments/list",
+              "api-reference/segments/update",
+              "api-reference/segments/delete"
+            ]
+          },
+          {
+            "group": "Broadcasts",
+            "pages": [
+              "api-reference/broadcasts/create",
+              "api-reference/broadcasts/get",
+              "api-reference/broadcasts/list",
+              "api-reference/broadcasts/send",
+              "api-reference/broadcasts/schedule",
+              "api-reference/broadcasts/cancel",
+              "api-reference/broadcasts/delete"
+            ]
+          },
+          {
+            "group": "Topics",
+            "pages": [
+              "api-reference/topics/create",
+              "api-reference/topics/get",
+              "api-reference/topics/list",
+              "api-reference/topics/delete"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "api-reference/webhooks/create",
+              "api-reference/webhooks/get",
+              "api-reference/webhooks/list",
+              "api-reference/webhooks/update",
+              "api-reference/webhooks/delete",
+              "api-reference/webhooks/verify"
+            ]
+          },
+          {
+            "group": "API Keys",
+            "pages": [
+              "api-reference/api-keys/create",
+              "api-reference/api-keys/list",
+              "api-reference/api-keys/delete"
+            ]
+          },
+          {
+            "group": "Receiving",
+            "pages": [
+              "api-reference/receiving/list-inbound-emails",
+              "api-reference/receiving/get-inbound-email",
+              "api-reference/receiving/get-attachment"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Send single and batch emails",
+    "Email templates with dynamic variables",
+    "File attachments (standard and inline)",
+    "Domain management and verification",
+    "Contact and segment management",
+    "Webhook integration with signature verification",
+    "Scheduled email sending",
+    "Inbound email receiving",
+    "Broadcast campaigns",
+    "API key management"
+  ],
+  "publicApiSurface": [
+    "NewClient(apiKey string) *Client",
+    "NewCustomClient(httpClient *http.Client, apiKey string) *Client",
+    "Client.Emails.Send(params *SendEmailRequest) (*SendEmailResponse, error)",
+    "Client.Emails.Get(emailId string) (*Email, error)",
+    "Client.Emails.List() (ListEmailsResponse, error)",
+    "Client.Emails.Update(params *UpdateEmailRequest) (*UpdateEmailResponse, error)",
+    "Client.Emails.Cancel(emailId string) (*CancelScheduledEmailResponse, error)",
+    "Client.Batch.Send(params []*SendEmailRequest) (*BatchEmailResponse, error)",
+    "Client.Templates.Create(params *CreateTemplateRequest) (*CreateTemplateResponse, error)",
+    "Client.Templates.Get(identifier string) (*Template, error)",
+    "Client.Templates.List(options *ListOptions) (*ListTemplatesResponse, error)",
+    "Client.Templates.Update(identifier string, params *UpdateTemplateRequest) (*UpdateTemplateResponse, error)",
+    "Client.Templates.Publish(identifier string) (*PublishTemplateResponse, error)",
+    "Client.Domains.Create(params *CreateDomainRequest) (CreateDomainResponse, error)",
+    "Client.Domains.Get(domainId string) (Domain, error)",
+    "Client.Domains.List() (ListDomainsResponse, error)",
+    "Client.Domains.Verify(domainId string) (bool, error)",
+    "Client.Contacts.Create(params *CreateContactRequest) (CreateContactResponse, error)",
+    "Client.Contacts.Get(options *GetContactOptions) (Contact, error)",
+    "Client.Contacts.List(options *ListContactsOptions) (ListContactsResponse, error)",
+    "Client.Segments.Create(params *CreateSegmentRequest) (*CreateSegmentResponse, error)",
+    "Client.Segments.Get(segmentId string) (*Segment, error)",
+    "Client.Segments.List(options *ListOptions) (*ListSegmentsResponse, error)",
+    "Client.Broadcasts.Create(params *CreateBroadcastRequest) (*CreateBroadcastResponse, error)",
+    "Client.Broadcasts.Send(broadcastId string) (*SendBroadcastResponse, error)",
+    "Client.Webhooks.Create(params *CreateWebhookRequest) (*CreateWebhookResponse, error)",
+    "Client.Webhooks.Verify(options *VerifyWebhookOptions) error",
+    "Client.ApiKeys.Create(params *CreateApiKeyRequest) (*CreateApiKeyResponse, error)",
+    "Client.Emails.Receiving.List(options *ListOptions) (*ListInboundEmailsResponse, error)"
+  ]
+}
