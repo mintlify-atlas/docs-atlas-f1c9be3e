@@ -1,0 +1,150 @@
+---
+title: Create Contact
+description: Add a new contact to your audience or global contacts
+---
+
+## Methods
+
+### Create
+
+```go
+func (s *ContactsSvcImpl) Create(params *CreateContactRequest) (CreateContactResponse, error)
+```
+
+Creates a new contact.
+
+### CreateWithContext
+
+```go
+func (s *ContactsSvcImpl) CreateWithContext(ctx context.Context, params *CreateContactRequest) (CreateContactResponse, error)
+```
+
+Creates a new contact with context support.
+
+## Request Parameters
+
+### CreateContactRequest
+
+<ParamField body="email" type="string" required>
+  The email address of the contact
+</ParamField>
+
+<ParamField body="audience_id" type="string">
+  **Deprecated:** The audience ID to add the contact to. Omit this field to create a global contact. Use the Segments API for contact organization instead.
+</ParamField>
+
+<ParamField body="unsubscribed" type="bool">
+  Whether the contact is unsubscribed from emails. Defaults to `false`.
+</ParamField>
+
+<ParamField body="first_name" type="string">
+  The contact's first name
+</ParamField>
+
+<ParamField body="last_name" type="string">
+  The contact's last name
+</ParamField>
+
+<ParamField body="properties" type="map[string]any">
+  Custom key-value pairs for global contacts (when `audience_id` is omitted).
+  
+  **Important:** Currently, the Resend API only accepts string values for properties. Non-string values (numbers, booleans, etc.) will be rejected by the API with a validation error.
+  
+  Example: `map[string]any{"tier": "premium", "age": "30", "active": "true"}`
+</ParamField>
+
+## Response
+
+### CreateContactResponse
+
+<ResponseField name="object" type="string">
+  Object type ("contact")
+</ResponseField>
+
+<ResponseField name="id" type="string">
+  The unique identifier for the created contact
+</ResponseField>
+
+## Examples
+
+### Create Global Contact
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    params := &resend.CreateContactRequest{
+        Email:     "user@example.com",
+        FirstName: "John",
+        LastName:  "Doe",
+    }
+
+    contact, err := client.Contacts.Create(params)
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("Contact created:", contact.Id)
+}
+```
+
+### Create Contact with Properties
+
+```go
+params := &resend.CreateContactRequest{
+    Email:     "user@example.com",
+    FirstName: "Jane",
+    LastName:  "Smith",
+    Properties: map[string]any{
+        "tier":     "premium",
+        "industry": "technology",
+        "company":  "Acme Inc",
+    },
+}
+
+contact, err := client.Contacts.Create(params)
+```
+
+### Create Audience Contact (Deprecated)
+
+```go
+params := &resend.CreateContactRequest{
+    Email:      "user@example.com",
+    AudienceId: "aud_123456",
+    FirstName:  "John",
+    LastName:   "Doe",
+}
+
+contact, err := client.Contacts.Create(params)
+```
+
+### With Context
+
+```go
+ctx := context.Background()
+
+params := &resend.CreateContactRequest{
+    Email:        "user@example.com",
+    FirstName:    "Alice",
+    LastName:     "Johnson",
+    Unsubscribed: false,
+}
+
+contact, err := client.Contacts.CreateWithContext(ctx, params)
+if err != nil {
+    panic(err)
+}
+```
+
+## Notes
+
+- **Global contacts** (without `audience_id`) support custom properties
+- **Audience-specific contacts** (with `audience_id`) do not support custom properties
+- The `audience_id` field is deprecated; use the Segments API for organizing contacts

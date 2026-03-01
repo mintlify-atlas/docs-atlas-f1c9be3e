@@ -1,0 +1,124 @@
+---
+title: 'Get broadcast'
+description: 'Retrieve a single broadcast by ID.'
+---
+
+Retrieves detailed information about a specific broadcast.
+
+## Methods
+
+### Get
+
+```go
+Get(broadcastId string) (Broadcast, error)
+```
+
+Retrieves a broadcast using the default background context.
+
+### GetWithContext
+
+```go
+GetWithContext(ctx context.Context, broadcastId string) (Broadcast, error)
+```
+
+Retrieves a broadcast with a custom context for cancellation and timeout control.
+
+## Parameters
+
+<ParamField path="broadcastId" type="string" required>
+  The unique identifier of the broadcast to retrieve.
+</ParamField>
+
+## Response
+
+<ResponseField name="object" type="string">
+  The object type, always `broadcast`.
+</ResponseField>
+
+<ResponseField name="id" type="string">
+  The unique identifier for the broadcast.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The name of the broadcast.
+</ResponseField>
+
+<ResponseField name="segment_id" type="string">
+  The ID of the segment this broadcast is sent to.
+</ResponseField>
+
+<ResponseField name="from" type="string">
+  The sender email address.
+</ResponseField>
+
+<ResponseField name="subject" type="string">
+  The email subject line.
+</ResponseField>
+
+<ResponseField name="reply_to" type="string[]">
+  An array of reply-to email addresses.
+</ResponseField>
+
+<ResponseField name="html" type="string">
+  The HTML content of the email.
+</ResponseField>
+
+<ResponseField name="text" type="string">
+  The plain text content of the email.
+</ResponseField>
+
+<ResponseField name="preview_text" type="string">
+  The preview text that appears in email clients.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  The current status of the broadcast (e.g., "draft", "scheduled", "sent").
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  ISO 8601 timestamp of when the broadcast was created.
+</ResponseField>
+
+<ResponseField name="scheduled_at" type="string">
+  ISO 8601 timestamp of when the broadcast is scheduled to be sent.
+</ResponseField>
+
+<ResponseField name="sent_at" type="string">
+  ISO 8601 timestamp of when the broadcast was sent.
+</ResponseField>
+
+<ResponseField name="audience_id" type="string" deprecated>
+  Deprecated. Use `segment_id` instead.
+</ResponseField>
+
+## Example
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    broadcast, err := client.Broadcasts.Get("brd_123456")
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("Broadcast Name:", broadcast.Name)
+    fmt.Println("Status:", broadcast.Status)
+    fmt.Println("Created At:", broadcast.CreatedAt)
+    
+    if broadcast.ScheduledAt != "" {
+        fmt.Println("Scheduled At:", broadcast.ScheduledAt)
+    }
+    
+    if broadcast.SentAt != "" {
+        fmt.Println("Sent At:", broadcast.SentAt)
+    }
+}
+```

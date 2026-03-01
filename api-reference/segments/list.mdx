@@ -1,0 +1,125 @@
+---
+title: 'List segments'
+description: 'Retrieve a list of all segments.'
+---
+
+Retrieves a paginated list of all segments.
+
+## Methods
+
+### List
+
+```go
+List() (ListSegmentsResponse, error)
+```
+
+Lists all segments using the default background context.
+
+### ListWithContext
+
+```go
+ListWithContext(ctx context.Context) (ListSegmentsResponse, error)
+```
+
+Lists all segments with a custom context for cancellation and timeout control.
+
+### ListWithOptions
+
+```go
+ListWithOptions(ctx context.Context, options *ListOptions) (ListSegmentsResponse, error)
+```
+
+Lists segments with pagination options.
+
+## Query Parameters
+
+When using `ListWithOptions`, you can pass a `ListOptions` struct with the following fields:
+
+<ParamField query="limit" type="number">
+  The maximum number of segments to return per page.
+</ParamField>
+
+<ParamField query="offset" type="number">
+  The number of segments to skip before starting to return results.
+</ParamField>
+
+## Response
+
+<ResponseField name="object" type="string">
+  The object type, always `list`.
+</ResponseField>
+
+<ResponseField name="data" type="Segment[]">
+  An array of segment objects.
+  <Expandable title="Segment properties">
+    <ResponseField name="id" type="string">
+      The unique identifier for the segment.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      The name of the segment.
+    </ResponseField>
+    <ResponseField name="object" type="string">
+      The object type, always `segment`.
+    </ResponseField>
+    <ResponseField name="created_at" type="string">
+      ISO 8601 timestamp of when the segment was created.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="has_more" type="boolean">
+  Indicates whether there are more segments available beyond the current page.
+</ResponseField>
+
+## Example
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    segments, err := client.Segments.List()
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("Total segments:", len(segments.Data))
+    for _, segment := range segments.Data {
+        fmt.Printf("%s: %s\n", segment.Id, segment.Name)
+    }
+}
+```
+
+## Example with pagination
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    options := &resend.ListOptions{
+        Limit:  10,
+        Offset: 0,
+    }
+
+    segments, err := client.Segments.ListWithOptions(context.Background(), options)
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("Has more:", segments.HasMore)
+}
+```

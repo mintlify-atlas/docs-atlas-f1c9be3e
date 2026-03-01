@@ -1,0 +1,59 @@
+---
+title: 'Update segment'
+description: 'Update an existing segment.'
+---
+
+<Warning>
+  The Resend Go SDK does not currently provide an Update method for segments. To modify a segment, you'll need to delete the existing segment and create a new one with the updated information.
+</Warning>
+
+## Alternative approach
+
+To update a segment, follow these steps:
+
+1. Use the [Get segment](/api-reference/segments/get) method to retrieve the current segment details
+2. Use the [Delete segment](/api-reference/segments/delete) method to remove the existing segment
+3. Use the [Create segment](/api-reference/segments/create) method to create a new segment with updated information
+
+## Example
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    // Get the current segment
+    segment, err := client.Segments.Get("seg_123456")
+    if err != nil {
+        panic(err)
+    }
+
+    // Delete the existing segment
+    _, err = client.Segments.Remove("seg_123456")
+    if err != nil {
+        panic(err)
+    }
+
+    // Create a new segment with updated name
+    params := &resend.CreateSegmentRequest{
+        Name: "Updated Segment Name",
+    }
+
+    newSegment, err := client.Segments.Create(params)
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("New Segment ID:", newSegment.Id)
+}
+```
+
+<Info>
+  Note that this approach will change the segment ID. Make sure to update any references to the old segment ID in your application.
+</Info>

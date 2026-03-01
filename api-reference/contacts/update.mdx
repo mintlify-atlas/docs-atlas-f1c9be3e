@@ -1,0 +1,189 @@
+---
+title: Update Contact
+description: Update an existing contact's information
+---
+
+## Methods
+
+### Update
+
+```go
+func (s *ContactsSvcImpl) Update(params *UpdateContactRequest) (UpdateContactResponse, error)
+```
+
+Updates an existing contact.
+
+### UpdateWithContext
+
+```go
+func (s *ContactsSvcImpl) UpdateWithContext(ctx context.Context, params *UpdateContactRequest) (UpdateContactResponse, error)
+```
+
+Updates an existing contact with context support.
+
+## Request Parameters
+
+### UpdateContactRequest
+
+<ParamField body="id" type="string" required>
+  The contact ID to update. Either `id` or `email` is required.
+</ParamField>
+
+<ParamField body="email" type="string">
+  The contact's new email address, or use this to identify the contact instead of `id`
+</ParamField>
+
+<ParamField body="audience_id" type="string">
+  **Deprecated:** Optional - Omit for global contacts. Use Segments API for contact organization.
+</ParamField>
+
+<ParamField body="first_name" type="string">
+  The contact's first name
+</ParamField>
+
+<ParamField body="last_name" type="string">
+  The contact's last name
+</ParamField>
+
+<ParamField body="unsubscribed" type="bool">
+  Whether the contact is unsubscribed. Use `SetUnsubscribed()` method to set this value (see examples).
+</ParamField>
+
+<ParamField body="properties" type="map[string]any">
+  Custom key-value pairs for global contacts (when `audience_id` is omitted).
+  
+  **Important:** Currently, the Resend API only accepts string values for properties. Non-string values will be rejected.
+  
+  Example: `map[string]any{"tier": "premium", "age": "30"}`
+</ParamField>
+
+### SetUnsubscribed Method
+
+```go
+func (r *UpdateContactRequest) SetUnsubscribed(val bool)
+```
+
+Sets the unsubscribed status. This is a temporary helper method for backwards compatibility (will be improved in v3). Use this method to explicitly set the unsubscribed field to `false`, since the default zero value for bool is false with omitempty.
+
+## Response
+
+### UpdateContactResponse
+
+<ResponseField name="data" type="Contact">
+  The updated contact object containing:
+  - `id` (string): Contact identifier
+  - `email` (string): Email address
+  - `object` (string): Object type
+  - `first_name` (string): First name
+  - `last_name` (string): Last name
+  - `created_at` (string): Creation timestamp
+  - `unsubscribed` (bool): Unsubscribe status
+  - `properties` (map[string]any): Custom properties
+</ResponseField>
+
+<ResponseField name="error" type="struct{}">
+  Error information if the update failed
+</ResponseField>
+
+## Examples
+
+### Update Contact Name
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    params := &resend.UpdateContactRequest{
+        Id:        "c1a2b3c4-d5e6-7f8g-9h0i-1j2k3l4m5n6o",
+        FirstName: "Jane",
+        LastName:  "Smith",
+    }
+
+    response, err := client.Contacts.Update(params)
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("Updated:", response.Data.Email)
+}
+```
+
+### Update Using Email Address
+
+```go
+params := &resend.UpdateContactRequest{
+    Email:     "user@example.com",
+    FirstName: "John",
+}
+
+response, err := client.Contacts.Update(params)
+```
+
+### Update Unsubscribe Status
+
+```go
+params := &resend.UpdateContactRequest{
+    Id: "c1a2b3c4-d5e6-7f8g-9h0i-1j2k3l4m5n6o",
+}
+params.SetUnsubscribed(true)
+
+response, err := client.Contacts.Update(params)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Unsubscribed:", response.Data.Unsubscribed)
+```
+
+### Update Contact Properties
+
+```go
+params := &resend.UpdateContactRequest{
+    Id: "c1a2b3c4-d5e6-7f8g-9h0i-1j2k3l4m5n6o",
+    Properties: map[string]any{
+        "tier":        "enterprise",
+        "plan_updated": "2024-03-01",
+    },
+}
+
+response, err := client.Contacts.Update(params)
+```
+
+### Complete Update with Context
+
+```go
+ctx := context.Background()
+
+params := &resend.UpdateContactRequest{
+    Id:        "c1a2b3c4-d5e6-7f8g-9h0i-1j2k3l4m5n6o",
+    Email:     "newemail@example.com",
+    FirstName: "Alice",
+    LastName:  "Johnson",
+    Properties: map[string]any{
+        "company": "Acme Corp",
+        "role":    "Developer",
+    },
+}
+params.SetUnsubscribed(false)
+
+response, err := client.Contacts.UpdateWithContext(ctx, params)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Contact updated successfully")
+```
+
+## Notes
+
+- Either `Id` or `Email` must be provided to identify the contact
+- Use `SetUnsubscribed()` method to set the unsubscribed status
+- Properties are only supported for global contacts (without `audience_id`)
+- The API currently only accepts string values for properties

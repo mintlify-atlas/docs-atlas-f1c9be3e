@@ -1,122 +1,185 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Resend Go SDK",
+  "theme": "palm",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#FF5C35"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/resend/resend-go"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/resend/resend-go"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "introduction",
+              "installation",
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Features",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "guides/sending-emails",
+              "guides/email-templates",
+              "guides/attachments",
+              "guides/batch-emails",
+              "guides/scheduled-emails"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Advanced",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "guides/domains",
+              "guides/contacts",
+              "guides/segments",
+              "guides/broadcasts",
+              "guides/webhooks",
+              "guides/receiving-emails"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Examples",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "examples/basic-usage",
+              "examples/templates",
+              "examples/custom-client",
+              "examples/error-handling"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Client",
             "pages": [
-              "api-reference/introduction"
+              "api-reference/client"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Emails",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api-reference/emails/send",
+              "api-reference/emails/get",
+              "api-reference/emails/list",
+              "api-reference/emails/update",
+              "api-reference/emails/cancel",
+              "api-reference/emails/attachments"
+            ]
+          },
+          {
+            "group": "Batch",
+            "pages": [
+              "api-reference/batch/send"
+            ]
+          },
+          {
+            "group": "Templates",
+            "pages": [
+              "api-reference/templates/create",
+              "api-reference/templates/get",
+              "api-reference/templates/list",
+              "api-reference/templates/update",
+              "api-reference/templates/publish",
+              "api-reference/templates/duplicate",
+              "api-reference/templates/delete"
+            ]
+          },
+          {
+            "group": "Domains",
+            "pages": [
+              "api-reference/domains/create",
+              "api-reference/domains/get",
+              "api-reference/domains/list",
+              "api-reference/domains/verify",
+              "api-reference/domains/update",
+              "api-reference/domains/delete"
+            ]
+          },
+          {
+            "group": "Contacts",
+            "pages": [
+              "api-reference/contacts/create",
+              "api-reference/contacts/get",
+              "api-reference/contacts/list",
+              "api-reference/contacts/update",
+              "api-reference/contacts/delete"
+            ]
+          },
+          {
+            "group": "Segments",
+            "pages": [
+              "api-reference/segments/create",
+              "api-reference/segments/get",
+              "api-reference/segments/list",
+              "api-reference/segments/update",
+              "api-reference/segments/delete"
+            ]
+          },
+          {
+            "group": "Broadcasts",
+            "pages": [
+              "api-reference/broadcasts/create",
+              "api-reference/broadcasts/get",
+              "api-reference/broadcasts/list",
+              "api-reference/broadcasts/send",
+              "api-reference/broadcasts/schedule",
+              "api-reference/broadcasts/cancel",
+              "api-reference/broadcasts/delete"
+            ]
+          },
+          {
+            "group": "Topics",
+            "pages": [
+              "api-reference/topics/create",
+              "api-reference/topics/get",
+              "api-reference/topics/list",
+              "api-reference/topics/delete"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "api-reference/webhooks/create",
+              "api-reference/webhooks/get",
+              "api-reference/webhooks/list",
+              "api-reference/webhooks/update",
+              "api-reference/webhooks/delete",
+              "api-reference/webhooks/verify"
+            ]
+          },
+          {
+            "group": "API Keys",
+            "pages": [
+              "api-reference/api-keys/create",
+              "api-reference/api-keys/list",
+              "api-reference/api-keys/delete"
+            ]
+          },
+          {
+            "group": "Receiving",
+            "pages": [
+              "api-reference/receiving/list-inbound-emails",
+              "api-reference/receiving/get-inbound-email",
+              "api-reference/receiving/get-attachment"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

@@ -1,0 +1,72 @@
+---
+title: 'Delete segment'
+description: 'Delete a segment by ID.'
+---
+
+Removes a segment entry by its unique identifier.
+
+## Methods
+
+### Remove
+
+```go
+Remove(segmentId string) (RemoveSegmentResponse, error)
+```
+
+Deletes a segment using the default background context.
+
+### RemoveWithContext
+
+```go
+RemoveWithContext(ctx context.Context, segmentId string) (RemoveSegmentResponse, error)
+```
+
+Deletes a segment with a custom context for cancellation and timeout control.
+
+## Parameters
+
+<ParamField path="segmentId" type="string" required>
+  The unique identifier of the segment to delete.
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  The unique identifier of the deleted segment.
+</ResponseField>
+
+<ResponseField name="object" type="string">
+  The object type, always `segment`.
+</ResponseField>
+
+<ResponseField name="deleted" type="boolean">
+  Indicates whether the segment was successfully deleted.
+</ResponseField>
+
+## Example
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    response, err := client.Segments.Remove("seg_123456")
+    if err != nil {
+        panic(err)
+    }
+
+    if response.Deleted {
+        fmt.Println("Segment deleted successfully")
+    }
+}
+```
+
+<Warning>
+  Deleting a segment is permanent and cannot be undone. Make sure you want to delete the segment before proceeding.
+</Warning>

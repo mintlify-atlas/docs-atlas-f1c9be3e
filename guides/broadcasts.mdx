@@ -1,0 +1,595 @@
+---
+title: Broadcasts
+description: Learn how to send email campaigns to segments with the Resend Go SDK
+---
+
+Broadcasts allow you to send email campaigns to all contacts in a segment. This guide covers creating, scheduling, sending, and managing broadcast campaigns with the Resend Go SDK.
+
+## Overview
+
+Broadcasts enable you to:
+- Send mass email campaigns to segments
+- Schedule campaigns for future delivery
+- Create draft campaigns for review
+- Track campaign status and delivery
+- Manage campaign lifecycle from creation to deletion
+
+## Creating a Broadcast
+
+Create a broadcast campaign targeting a specific segment.
+
+<CodeGroup>
+```go Basic Broadcast (Draft)
+import (
+    "github.com/resend/resend-go/v3"
+)
+
+client := resend.NewClient("re_123456789")
+
+params := &resend.CreateBroadcastRequest{
+    SegmentId: "seg-123456",
+    From:      "updates@example.com",
+    Subject:   "Monthly Newsletter",
+    Html:      "<h1>This Month's Updates</h1><p>Content here...</p>",
+    Name:      "Monthly Newsletter - January 2024",
+}
+
+broadcast, err := client.Broadcasts.Create(params)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Created broadcast ID:", broadcast.Id)
+```
+
+```go Create and Send Immediately
+params := &resend.CreateBroadcastRequest{
+    SegmentId: "seg-123456",
+    From:      "noreply@example.com",
+    Subject:   "Product Announcement",
+    Html:      "<h1>Exciting News!</h1>",
+    Text:      "Exciting News!",
+    ReplyTo:   []string{"support@example.com"},
+    Name:      "Product Launch",
+    Send:      true, // Send immediately
+}
+
+broadcast, err := client.Broadcasts.Create(params)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Broadcast sent:", broadcast.Id)
+```
+
+```go Create with Schedule
+params := &resend.CreateBroadcastRequest{
+    SegmentId:   "seg-123456",
+    From:        "newsletter@example.com",
+    Subject:     "Weekly Digest",
+    Html:        "<h1>This Week's Highlights</h1>",
+    Name:        "Weekly Digest",
+    Send:        true,
+    ScheduledAt: "2024-12-31T10:00:00Z", // ISO 8601 format
+}
+
+broadcast, err := client.Broadcasts.Create(params)
+```
+</CodeGroup>
+
+### Request Parameters
+
+<ParamField path="SegmentId" type="string" required>
+  The ID of the segment to send the broadcast to. All contacts in this segment will receive the email.
+</ParamField>
+
+<ParamField path="From" type="string" required>
+  The sender email address (e.g., "sender@example.com" or "Sender Name &lt;sender@example.com&gt;").
+</ParamField>
+
+<ParamField path="Subject" type="string" required>
+  The email subject line.
+</ParamField>
+
+<ParamField path="Html" type="string" optional>
+  The HTML version of the email content.
+</ParamField>
+
+<ParamField path="Text" type="string" optional>
+  The plain text version of the email content.
+</ParamField>
+
+<ParamField path="Name" type="string" optional>
+  Internal name for the broadcast campaign (for your reference).
+</ParamField>
+
+<ParamField path="ReplyTo" type="[]string" optional>
+  Array of reply-to email addresses.
+</ParamField>
+
+<ParamField path="Send" type="bool" optional>
+  If `true`, sends the broadcast immediately. If `false` or omitted, creates a draft.
+</ParamField>
+
+<ParamField path="ScheduledAt" type="string" optional>
+  Schedule the broadcast for later delivery. Accepts ISO 8601 format (e.g., "2024-08-05T11:52:01.858Z") or natural language (e.g., "in 1 hour"). Only valid when `Send` is `true`.
+</ParamField>
+
+<Note>
+  **Deprecated:** `AudienceId` is still supported for backward compatibility, but use `SegmentId` for new integrations.
+</Note>
+
+## Retrieving a Broadcast
+
+Get details about a specific broadcast including its status and content.
+
+```go Get Broadcast
+broadcast, err := client.Broadcasts.Get("brd-123456")
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Name:", broadcast.Name)
+fmt.Println("Status:", broadcast.Status)
+fmt.Println("Segment ID:", broadcast.SegmentId)
+fmt.Println("From:", broadcast.From)
+fmt.Println("Subject:", broadcast.Subject)
+fmt.Println("Created At:", broadcast.CreatedAt)
+fmt.Println("Scheduled At:", broadcast.ScheduledAt)
+fmt.Println("Sent At:", broadcast.SentAt)
+```
+
+### Broadcast Status Values
+
+Broadcasts can have the following statuses:
+
+- `draft` - Created but not sent
+- `scheduled` - Scheduled for future delivery
+- `sending` - Currently being sent
+- `sent` - Successfully sent to all recipients
+- `failed` - Failed to send
+
+## Listing Broadcasts
+
+Retrieve all broadcasts in your account with optional pagination.
+
+<CodeGroup>
+```go List All Broadcasts
+broadcasts, err := client.Broadcasts.List()
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("You have %d broadcast(s)\n", len(broadcasts.Data))
+
+for _, b := range broadcasts.Data {
+    fmt.Printf("\n[%s] %s\n", b.Status, b.Name)
+    fmt.Printf("  Subject: %s\n", b.Subject)
+    fmt.Printf("  Created: %s\n", b.CreatedAt)
+}
+```
+
+```go With Pagination
+import "context"
+
+limit := 20
+options := &resend.ListOptions{
+    Limit: &limit,
+}
+
+broadcasts, err := client.Broadcasts.ListWithOptions(context.Background(), options)
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Retrieved %d broadcasts\n", len(broadcasts.Data))
+fmt.Printf("Has more: %v\n", broadcasts.HasMore)
+```
+</CodeGroup>
+
+## Updating a Broadcast
+
+Update a draft broadcast before sending. Only draft broadcasts can be updated.
+
+```go Update Broadcast
+updateParams := &resend.UpdateBroadcastRequest{
+    BroadcastId: "brd-123456",
+    Name:        "Updated Campaign Name",
+    Subject:     "New Subject Line",
+    Html:        "<h1>Updated Content</h1>",
+    From:        "newemail@example.com",
+}
+
+updated, err := client.Broadcasts.Update(updateParams)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Updated broadcast:", updated.Id)
+```
+
+<Warning>
+  You can only update broadcasts with `draft` status. Scheduled or sent broadcasts cannot be modified.
+</Warning>
+
+## Sending a Broadcast
+
+Send a draft broadcast immediately or schedule it for later.
+
+<CodeGroup>
+```go Send Immediately
+sendParams := &resend.SendBroadcastRequest{
+    BroadcastId: "brd-123456",
+}
+
+sent, err := client.Broadcasts.Send(sendParams)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Broadcast sent:", sent.Id)
+```
+
+```go Schedule for Later
+sendParams := &resend.SendBroadcastRequest{
+    BroadcastId: "brd-123456",
+    ScheduledAt: "2024-12-25T09:00:00Z", // ISO 8601
+}
+
+sent, err := client.Broadcasts.Send(sendParams)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Broadcast scheduled:", sent.Id)
+```
+
+```go Natural Language Scheduling
+sendParams := &resend.SendBroadcastRequest{
+    BroadcastId: "brd-123456",
+    ScheduledAt: "in 2 hours", // Natural language
+}
+
+sent, err := client.Broadcasts.Send(sendParams)
+```
+</CodeGroup>
+
+<Tip>
+  The `ScheduledAt` field accepts both ISO 8601 format and natural language expressions like "in 1 hour", "tomorrow at 9am", etc.
+</Tip>
+
+## Canceling a Scheduled Broadcast
+
+To cancel a scheduled broadcast, delete it before it's sent.
+
+```go Cancel Scheduled Broadcast
+// Check if broadcast is scheduled
+broadcast, err := client.Broadcasts.Get("brd-123456")
+if err != nil {
+    panic(err)
+}
+
+if broadcast.Status == "scheduled" {
+    removed, err := client.Broadcasts.Remove(broadcast.Id)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println("Canceled scheduled broadcast")
+}
+```
+
+## Deleting a Broadcast
+
+Delete a draft broadcast. Only draft broadcasts can be deleted.
+
+```go Delete Broadcast
+removed, err := client.Broadcasts.Remove("brd-123456")
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Broadcast %s deleted: %v\n", removed.Id, removed.Deleted)
+```
+
+<Warning>
+  Only broadcasts with `draft` status can be deleted. Sent broadcasts cannot be removed from your account.
+</Warning>
+
+## Complete Example
+
+Here's a complete workflow demonstrating broadcast campaign management:
+
+```go Complete Broadcast Workflow
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+    "time"
+    
+    "github.com/resend/resend-go/v3"
+)
+
+func main() {
+    ctx := context.Background()
+    apiKey := os.Getenv("RESEND_API_KEY")
+    client := resend.NewClient(apiKey)
+
+    // 1. Create a segment
+    segment, err := client.Segments.CreateWithContext(ctx, &resend.CreateSegmentRequest{
+        Name: "Newsletter Subscribers",
+    })
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("Created segment: %s\n", segment.Id)
+
+    // 2. Add contacts to the segment
+    contact, err := client.Contacts.CreateWithContext(ctx, &resend.CreateContactRequest{
+        Email:     "subscriber@example.com",
+        FirstName: "John",
+        LastName:  "Doe",
+    })
+    if err != nil {
+        panic(err)
+    }
+
+    _, err = client.Contacts.Segments.AddWithContext(ctx, &resend.AddContactSegmentRequest{
+        ContactId: contact.Id,
+        SegmentId: segment.Id,
+    })
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println("Added contact to segment")
+
+    // 3. Create a draft broadcast
+    createParams := &resend.CreateBroadcastRequest{
+        SegmentId: segment.Id,
+        From:      "newsletter@example.com",
+        Subject:   "Monthly Update - January 2024",
+        Html:      "<h1>Happy New Year!</h1><p>Here's what's new this month...</p>",
+        Text:      "Happy New Year! Here's what's new this month...",
+        ReplyTo:   []string{"support@example.com"},
+        Name:      "January 2024 Newsletter",
+    }
+
+    broadcast, err := client.Broadcasts.CreateWithContext(ctx, createParams)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("\nCreated draft broadcast: %s\n", broadcast.Id)
+
+    // 4. Review the broadcast
+    retrieved, err := client.Broadcasts.GetWithContext(ctx, broadcast.Id)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("\nBroadcast Details:\n")
+    fmt.Printf("  Name: %s\n", retrieved.Name)
+    fmt.Printf("  Status: %s\n", retrieved.Status)
+    fmt.Printf("  Subject: %s\n", retrieved.Subject)
+    fmt.Printf("  Segment: %s\n", retrieved.SegmentId)
+
+    // 5. Update the broadcast (optional)
+    updateParams := &resend.UpdateBroadcastRequest{
+        BroadcastId: broadcast.Id,
+        Subject:     "Monthly Update - Happy New Year!",
+    }
+
+    updated, err := client.Broadcasts.UpdateWithContext(ctx, updateParams)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("\nUpdated broadcast: %s\n", updated.Id)
+
+    // 6. Schedule the broadcast for later
+    scheduleTime := time.Now().Add(24 * time.Hour).Format(time.RFC3339)
+    sendParams := &resend.SendBroadcastRequest{
+        BroadcastId: broadcast.Id,
+        ScheduledAt: scheduleTime,
+    }
+
+    sent, err := client.Broadcasts.SendWithContext(ctx, sendParams)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("\nBroadcast scheduled: %s\n", sent.Id)
+
+    // 7. List all broadcasts
+    broadcasts, err := client.Broadcasts.ListWithContext(ctx)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("\nTotal broadcasts: %d\n", len(broadcasts.Data))
+    for _, b := range broadcasts.Data {
+        fmt.Printf("  - [%s] %s\n", b.Status, b.Name)
+    }
+
+    // 8. Cancel the scheduled broadcast (for demo purposes)
+    removed, err := client.Broadcasts.RemoveWithContext(ctx, broadcast.Id)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("\nCanceled broadcast: %v\n", removed.Deleted)
+
+    // Clean up
+    client.Contacts.RemoveWithContext(ctx, &resend.RemoveContactOptions{Id: contact.Id})
+    client.Segments.RemoveWithContext(ctx, segment.Id)
+    fmt.Println("\nCleanup complete")
+}
+```
+
+## Broadcast Campaign Patterns
+
+### Newsletter Campaign
+
+```go Newsletter Pattern
+// Create recurring newsletter broadcasts
+for month := 1; month <= 12; month++ {
+    name := fmt.Sprintf("Newsletter - %s 2024", time.Month(month).String())
+    
+    broadcast, err := client.Broadcasts.Create(&resend.CreateBroadcastRequest{
+        SegmentId: "newsletter-subscribers",
+        From:      "newsletter@example.com",
+        Subject:   fmt.Sprintf("%s Newsletter", time.Month(month).String()),
+        Html:      generateNewsletterHTML(month),
+        Name:      name,
+    })
+    
+    if err != nil {
+        fmt.Printf("Failed to create %s: %v\n", name, err)
+        continue
+    }
+    
+    fmt.Printf("Created draft: %s\n", broadcast.Id)
+}
+```
+
+### Product Announcement
+
+```go Product Announcement
+// Send immediate product announcement
+broadcast, err := client.Broadcasts.Create(&resend.CreateBroadcastRequest{
+    SegmentId: "all-customers",
+    From:      "Product Team <products@example.com>",
+    Subject:   "🚀 Introducing Our New Feature!",
+    Html:      loadTemplate("product-announcement.html"),
+    Text:      loadTemplate("product-announcement.txt"),
+    ReplyTo:   []string{"feedback@example.com"},
+    Name:      "Feature Launch - Q1 2024",
+    Send:      true, // Send immediately
+})
+
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Announcement sent to all customers")
+```
+
+### Scheduled Campaign Series
+
+```go Drip Campaign
+// Create a series of scheduled broadcasts
+schedules := []struct {
+    delay   time.Duration
+    subject string
+    content string
+}{
+    {0, "Welcome to Our Platform!", "welcome.html"},
+    {24 * time.Hour, "Getting Started Guide", "getting-started.html"},
+    {3 * 24 * time.Hour, "Pro Tips and Tricks", "pro-tips.html"},
+    {7 * 24 * time.Hour, "We'd Love Your Feedback", "feedback.html"},
+}
+
+for i, schedule := range schedules {
+    sendTime := time.Now().Add(schedule.delay).Format(time.RFC3339)
+    
+    broadcast, err := client.Broadcasts.Create(&resend.CreateBroadcastRequest{
+        SegmentId: "new-users",
+        From:      "onboarding@example.com",
+        Subject:   schedule.subject,
+        Html:      loadTemplate(schedule.content),
+        Name:      fmt.Sprintf("Onboarding Email %d", i+1),
+        Send:      true,
+        ScheduledAt: sendTime,
+    })
+    
+    if err != nil {
+        fmt.Printf("Failed to schedule email %d: %v\n", i+1, err)
+        continue
+    }
+    
+    fmt.Printf("Scheduled: %s for %s\n", broadcast.Id, sendTime)
+}
+```
+
+## Error Handling
+
+```go Robust Error Handling
+broadcast, err := client.Broadcasts.Create(params)
+if err != nil {
+    fmt.Printf("Failed to create broadcast: %v\n", err)
+    // Handle specific errors
+    return
+}
+
+// Verify broadcast was created
+if broadcast.Id == "" {
+    fmt.Println("Broadcast created but no ID returned")
+    return
+}
+
+// Check status before sending
+retrieved, err := client.Broadcasts.Get(broadcast.Id)
+if err != nil {
+    fmt.Printf("Failed to retrieve broadcast: %v\n", err)
+    return
+}
+
+if retrieved.Status != "draft" {
+    fmt.Printf("Cannot send broadcast with status: %s\n", retrieved.Status)
+    return
+}
+
+// Attempt to send
+sent, err := client.Broadcasts.Send(&resend.SendBroadcastRequest{
+    BroadcastId: broadcast.Id,
+})
+if err != nil {
+    fmt.Printf("Failed to send broadcast: %v\n", err)
+    return
+}
+
+fmt.Printf("Successfully sent broadcast: %s\n", sent.Id)
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Test Before Sending" icon="flask">
+    Create a test segment with your own email to preview broadcasts before sending to large audiences.
+  </Card>
+  
+  <Card title="Use Descriptive Names" icon="tag">
+    Give broadcasts clear internal names to track campaigns effectively (e.g., "Q1 Newsletter - March 2024").
+  </Card>
+  
+  <Card title="Include Plain Text" icon="file-text">
+    Always include a `Text` version for better deliverability and accessibility.
+  </Card>
+  
+  <Card title="Set Reply-To Addresses" icon="reply">
+    Configure `ReplyTo` to handle customer responses effectively.
+  </Card>
+  
+  <Card title="Schedule Wisely" icon="clock">
+    Schedule campaigns for optimal send times based on your audience's timezone and habits.
+  </Card>
+  
+  <Card title="Monitor Status" icon="chart-line">
+    Check broadcast status and use webhooks to track delivery and engagement.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Segments" icon="layer-group" href="/guides/segments">
+    Learn how to organize contacts into segments
+  </Card>
+  
+  <Card title="Webhooks" icon="webhook" href="/guides/webhooks">
+    Track broadcast events with webhooks
+  </Card>
+  
+  <Card title="Broadcasts Example" icon="code" href="https://github.com/resend/resend-go/blob/main/examples/broadcasts.go">
+    View the complete broadcasts example
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="https://resend.com/docs/api-reference/broadcasts">
+    View the complete Broadcasts API reference
+  </Card>
+</CardGroup>

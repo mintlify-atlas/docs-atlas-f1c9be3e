@@ -1,0 +1,206 @@
+---
+title: 'Create Template'
+description: 'Create a new email template'
+---
+
+## Create
+
+Create a new template using the default context.
+
+```go
+func (s *TemplatesSvcImpl) Create(params *CreateTemplateRequest) (*CreateTemplateResponse, error)
+```
+
+### Parameters
+
+<ParamField path="params" type="*CreateTemplateRequest" required>
+  The template creation parameters.
+</ParamField>
+
+### Returns
+
+Returns a `*CreateTemplateResponse` containing the created template ID.
+
+### Example
+
+```go
+template := &resend.CreateTemplateRequest{
+  Name:    "Welcome Email",
+  Alias:   "welcome-email",
+  From:    "onboarding@resend.dev",
+  Subject: "Welcome {{{name}}}!",
+  Html:    "<h1>Hello {{{name}}}</h1><p>Welcome to our service!</p>",
+  Variables: []*resend.TemplateVariable{
+    {
+      Key:           "name",
+      Type:          resend.VariableTypeString,
+      FallbackValue: "there",
+    },
+  },
+}
+
+response, err := client.Templates.Create(template)
+if err != nil {
+  panic(err)
+}
+
+fmt.Println("Template ID:", response.Id)
+```
+
+---
+
+## CreateWithContext
+
+Create a new template with a custom context.
+
+```go
+func (s *TemplatesSvcImpl) CreateWithContext(ctx context.Context, params *CreateTemplateRequest) (*CreateTemplateResponse, error)
+```
+
+### Parameters
+
+<ParamField path="ctx" type="context.Context" required>
+  Context for the request, useful for timeouts and cancellation.
+</ParamField>
+
+<ParamField path="params" type="*CreateTemplateRequest" required>
+  The template creation parameters.
+</ParamField>
+
+### Returns
+
+Returns a `*CreateTemplateResponse` containing the created template ID.
+
+### Example
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+defer cancel()
+
+template := &resend.CreateTemplateRequest{
+  Name:    "Welcome Email",
+  Html:    "<h1>Hello {{{name}}}</h1>",
+  Variables: []*resend.TemplateVariable{
+    {
+      Key:  "name",
+      Type: resend.VariableTypeString,
+    },
+  },
+}
+
+response, err := client.Templates.CreateWithContext(ctx, template)
+if err != nil {
+  panic(err)
+}
+```
+
+---
+
+## Types
+
+### CreateTemplateRequest
+
+Request payload for creating a template.
+
+```go
+type CreateTemplateRequest struct {
+  Name      string              `json:"name"`
+  Alias     string              `json:"alias,omitempty"`
+  From      string              `json:"from,omitempty"`
+  Subject   string              `json:"subject,omitempty"`
+  ReplyTo   any                 `json:"reply_to,omitempty"` // string or []string
+  Html      string              `json:"html"`
+  Text      string              `json:"text,omitempty"`
+  Variables []*TemplateVariable `json:"variables,omitempty"`
+}
+```
+
+<ParamField path="Name" type="string" required>
+  The name of the template.
+</ParamField>
+
+<ParamField path="Alias" type="string">
+  A unique alias for the template. Can be used instead of the ID to reference the template.
+</ParamField>
+
+<ParamField path="From" type="string">
+  The sender email address. Can be a plain email or formatted as "Name &lt;email@example.com&gt;".
+</ParamField>
+
+<ParamField path="Subject" type="string">
+  The email subject line. Can include template variables like `{{{variable_name}}}`.
+</ParamField>
+
+<ParamField path="ReplyTo" type="any">
+  Reply-to email address. Can be a string or array of strings.
+</ParamField>
+
+<ParamField path="Html" type="string" required>
+  The HTML content of the email template. Use `{{{variable_name}}}` syntax for variables.
+  
+  **Important**: All variables referenced in Html must be declared in the Variables array, or the API will return a validation error.
+</ParamField>
+
+<ParamField path="Text" type="string">
+  Plain text version of the email template.
+</ParamField>
+
+<ParamField path="Variables" type="[]*TemplateVariable">
+  Array of variable declarations used in the template. All variables referenced in Html or Subject must be declared here.
+</ParamField>
+
+### CreateTemplateResponse
+
+Response from creating a template.
+
+```go
+type CreateTemplateResponse struct {
+  Id     string `json:"id"`
+  Object string `json:"object"`
+}
+```
+
+<ResponseField name="Id" type="string">
+  The unique identifier of the created template.
+</ResponseField>
+
+<ResponseField name="Object" type="string">
+  The object type, always "template".
+</ResponseField>
+
+### TemplateVariable
+
+Represents a variable in a template.
+
+```go
+type TemplateVariable struct {
+  Key           string       `json:"key"`
+  Type          VariableType `json:"type"`
+  FallbackValue any          `json:"fallback_value,omitempty"`
+}
+```
+
+<ParamField path="Key" type="string" required>
+  The variable name (without the curly braces). For example, for `{{{name}}}`, use "name".
+</ParamField>
+
+<ParamField path="Type" type="VariableType" required>
+  The type of the variable. Can be `VariableTypeString` or `VariableTypeNumber`.
+</ParamField>
+
+<ParamField path="FallbackValue" type="any">
+  Default value to use if the variable is not provided when sending an email.
+</ParamField>
+
+### VariableType
+
+Type constants for template variables.
+
+```go
+type VariableType string
+
+const (
+  VariableTypeString VariableType = "string"
+  VariableTypeNumber VariableType = "number"
+)
+```

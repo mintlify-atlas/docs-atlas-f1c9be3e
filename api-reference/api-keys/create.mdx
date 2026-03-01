@@ -1,0 +1,58 @@
+---
+title: Create API Key
+description: Create a new API key for authentication.
+---
+
+## Method
+
+```go
+func (s *ApiKeysSvcImpl) Create(params *CreateApiKeyRequest) (CreateApiKeyResponse, error)
+func (s *ApiKeysSvcImpl) CreateWithContext(ctx context.Context, params *CreateApiKeyRequest) (CreateApiKeyResponse, error)
+```
+
+## Parameters
+
+<ParamField path="params" type="*CreateApiKeyRequest" required>
+  The API key creation parameters
+  
+  <ParamField path="Name" type="string" required>
+    The name of the API key
+  </ParamField>
+  
+  <ParamField path="Permission" type="string">
+    The permission level for the API key
+  </ParamField>
+  
+  <ParamField path="DomainId" type="string">
+    Optional domain ID to scope the API key to a specific domain
+  </ParamField>
+</ParamField>
+
+## Response
+
+<ResponseField name="Id" type="string">
+  The unique identifier of the created API key
+</ResponseField>
+
+<ResponseField name="Token" type="string">
+  The API key token. Store this securely - it's only shown once.
+</ResponseField>
+
+## Example
+
+```go
+client := resend.NewClient("re_123456789")
+
+params := &resend.CreateApiKeyRequest{
+    Name:       "Production API Key",
+    Permission: "full_access",
+}
+
+apiKey, err := client.ApiKeys.Create(params)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("API Key ID:", apiKey.Id)
+fmt.Println("Token:", apiKey.Token)
+```

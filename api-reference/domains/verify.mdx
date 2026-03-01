@@ -1,0 +1,85 @@
+---
+title: Verify Domain
+description: Verify DNS records for a domain
+---
+
+## Methods
+
+### Verify
+
+```go
+func (s *DomainsSvcImpl) Verify(domainId string) (bool, error)
+```
+
+Verifies DNS records for a domain.
+
+### VerifyWithContext
+
+```go
+func (s *DomainsSvcImpl) VerifyWithContext(ctx context.Context, domainId string) (bool, error)
+```
+
+Verifies DNS records for a domain with context support.
+
+## Parameters
+
+<ParamField path="domainId" type="string" required>
+  The unique identifier of the domain to verify
+</ParamField>
+
+## Response
+
+<ResponseField name="verified" type="bool">
+  Returns `true` if the verification request was successful. Note: This indicates the verification was initiated, not that the domain is verified. Check the domain status using [Get Domain](/api-reference/domains/get) to confirm verification.
+</ResponseField>
+
+## Example
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    verified, err := client.Domains.Verify("d1e9e6f7-6a1c-4b3d-8c9e-1f2e3d4c5b6a")
+    if err != nil {
+        panic(err)
+    }
+
+    if verified {
+        fmt.Println("Verification initiated successfully")
+        
+        // Check the actual status
+        domain, err := client.Domains.Get("d1e9e6f7-6a1c-4b3d-8c9e-1f2e3d4c5b6a")
+        if err != nil {
+            panic(err)
+        }
+        
+        fmt.Println("Domain status:", domain.Status)
+    }
+}
+```
+
+## Example with Context
+
+```go
+ctx := context.Background()
+
+verified, err := client.Domains.VerifyWithContext(ctx, "d1e9e6f7-6a1c-4b3d-8c9e-1f2e3d4c5b6a")
+if err != nil {
+    panic(err)
+}
+```
+
+## Notes
+
+Before calling this method, ensure you have:
+1. Added all required DNS records to your domain's DNS configuration
+2. Waited for DNS propagation (can take up to 48 hours, but usually much faster)
+
+After verification, the domain's status will update from "pending" to "verified" if all DNS records are correctly configured.

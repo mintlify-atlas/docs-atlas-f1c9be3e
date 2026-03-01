@@ -1,0 +1,91 @@
+---
+title: 'Cancel broadcast'
+description: 'Cancel a scheduled broadcast.'
+---
+
+<Warning>
+  The Resend Go SDK does not provide a dedicated Cancel method for broadcasts. To cancel a scheduled broadcast, you have two options:
+</Warning>
+
+## Option 1: Delete the broadcast
+
+Use the [Delete broadcast](/api-reference/broadcasts/delete) method to permanently remove the scheduled broadcast:
+
+```go
+response, err := client.Broadcasts.Remove("brd_123456")
+if err != nil {
+    panic(err)
+}
+
+if response.Deleted {
+    fmt.Println("Scheduled broadcast cancelled")
+}
+```
+
+## Option 2: Update the broadcast
+
+Use the Update method to modify the broadcast and change its scheduled time or convert it back to a draft:
+
+```go
+params := &resend.UpdateBroadcastRequest{
+    BroadcastId: "brd_123456",
+    Subject:     "Updated Subject",
+    // Modify other fields as needed
+}
+
+response, err := client.Broadcasts.Update(params)
+```
+
+<Info>
+  Note that updating a broadcast does not automatically unschedule it. You would need to check the Resend API documentation to see if there's a specific status field or parameter to change the broadcast back to draft status.
+</Info>
+
+## Cancel scheduled emails
+
+If you need to cancel individual scheduled emails (not broadcasts), use the Emails service:
+
+```go
+response, err := client.Emails.Cancel("email_id")
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Email cancelled:", response.Id)
+```
+
+See the emails documentation for more details on cancelling scheduled emails.
+
+## Example: Check before cancelling
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    // Get the broadcast to check its status
+    broadcast, err := client.Broadcasts.Get("brd_123456")
+    if err != nil {
+        panic(err)
+    }
+
+    // Only delete if it's scheduled
+    if broadcast.Status == "scheduled" {
+        response, err := client.Broadcasts.Remove("brd_123456")
+        if err != nil {
+            panic(err)
+        }
+
+        if response.Deleted {
+            fmt.Println("Scheduled broadcast cancelled successfully")
+        }
+    } else {
+        fmt.Printf("Broadcast is not scheduled (status: %s)\n", broadcast.Status)
+    }
+}
+```

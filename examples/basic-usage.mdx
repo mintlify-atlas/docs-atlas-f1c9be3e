@@ -1,0 +1,390 @@
+---
+title: Basic Usage
+description: Learn how to send emails with the Resend Go SDK
+---
+
+This guide covers the fundamental operations for sending emails with the Resend Go SDK.
+
+## Initialize the Client
+
+First, create a Resend client with your API key:
+
+```go
+import (
+	"context"
+	"os"
+
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	ctx := context.TODO()
+	apiKey := os.Getenv("RESEND_API_KEY")
+
+	client := resend.NewClient(apiKey)
+}
+```
+
+## Send a Basic Email
+
+The simplest way to send an email:
+
+```go
+params := &resend.SendEmailRequest{
+	To:      []string{"delivered@resend.dev"},
+	From:    "onboarding@resend.dev",
+	Text:    "hello world",
+	Subject: "Hello from Golang",
+}
+
+sent, err := client.Emails.SendWithContext(ctx, params)
+if err != nil {
+	panic(err)
+}
+fmt.Printf("Sent email: %s\n", sent.Id)
+```
+
+## Email with HTML Content
+
+Send rich HTML emails:
+
+```go
+params := &resend.SendEmailRequest{
+	To:      []string{"delivered@resend.dev"},
+	From:    "onboarding@resend.dev",
+	Html:    "<strong>Welcome to our service!</strong>",
+	Text:    "Welcome to our service!",
+	Subject: "Welcome",
+}
+
+sent, err := client.Emails.SendWithContext(ctx, params)
+if err != nil {
+	panic(err)
+}
+```
+
+<Note>
+Providing both `Html` and `Text` ensures your email renders properly in all email clients.
+</Note>
+
+## Advanced Recipients
+
+Add CC, BCC, and ReplyTo addresses:
+
+<CodeGroup>
+
+```go CC and BCC
+params := &resend.SendEmailRequest{
+	To:      []string{"delivered@resend.dev"},
+	From:    "onboarding@resend.dev",
+	Text:    "hello world",
+	Subject: "Hello from Golang",
+	Cc:      []string{"cc@example.com"},
+	Bcc:     []string{"bcc@example.com"},
+}
+
+sent, err := client.Emails.SendWithContext(ctx, params)
+```
+
+```go Reply-To
+params := &resend.SendEmailRequest{
+	To:      []string{"delivered@resend.dev"},
+	From:    "onboarding@resend.dev",
+	Text:    "hello world",
+	Subject: "Hello from Golang",
+	ReplyTo: "support@example.com",
+}
+
+sent, err := client.Emails.SendWithContext(ctx, params)
+```
+
+```go Multiple Recipients
+params := &resend.SendEmailRequest{
+	To:      []string{"user1@example.com", "user2@example.com"},
+	From:    "onboarding@resend.dev",
+	Text:    "hello world",
+	Subject: "Hello from Golang",
+	Cc:      []string{"manager@example.com"},
+	Bcc:     []string{"archive@example.com"},
+	ReplyTo: "support@example.com",
+}
+
+sent, err := client.Emails.SendWithContext(ctx, params)
+```
+
+</CodeGroup>
+
+## Send with Idempotency Key
+
+Prevent duplicate emails by using an idempotency key:
+
+```go
+params := &resend.SendEmailRequest{
+	To:      []string{"delivered@resend.dev"},
+	From:    "onboarding@resend.dev",
+	Text:    "hello world",
+	Subject: "Hello from Golang",
+}
+
+options := &resend.SendEmailOptions{
+	IdempotencyKey: "unique-idempotency-key",
+}
+
+sent, err := client.Emails.SendWithOptions(ctx, params, options)
+if err != nil {
+	panic(err)
+}
+fmt.Printf("Sent email with idempotency key: %s\n", sent.Id)
+```
+
+<Note>
+If you send the same request with the same idempotency key within 24 hours, Resend will return the original response instead of sending a duplicate email.
+</Note>
+
+## Send with Attachments
+
+Attach files from local paths or remote URLs:
+
+<CodeGroup>
+
+```go Local File
+import "os"
+
+// Read attachment file
+pwd, _ := os.Getwd()
+fileContent, err := os.ReadFile(pwd + "/invoice.pdf")
+if err != nil {
+	panic(err)
+}
+
+attachment := &resend.Attachment{
+	Content:     fileContent,
+	Filename:    "invoice.pdf",
+	ContentType: "application/pdf",
+}
+
+params := &resend.SendEmailRequest{
+	To:          []string{"delivered@resend.dev"},
+	From:        "onboarding@resend.dev",
+	Text:        "Please find your invoice attached",
+	Subject:     "Your Invoice",
+	Attachments: []*resend.Attachment{attachment},
+}
+
+sent, err := client.Emails.SendWithContext(ctx, params)
+```
+
+```go Remote URL
+attachment := &resend.Attachment{
+	Path:        "https://example.com/invoice.pdf",
+	Filename:    "invoice.pdf",
+	ContentType: "application/pdf",
+}
+
+params := &resend.SendEmailRequest{
+	To:          []string{"delivered@resend.dev"},
+	From:        "onboarding@resend.dev",
+	Text:        "Please find your invoice attached",
+	Subject:     "Your Invoice",
+	Attachments: []*resend.Attachment{attachment},
+}
+
+sent, err := client.Emails.SendWithContext(ctx, params)
+```
+
+```go Multiple Attachments
+attachment1 := &resend.Attachment{
+	Content:     fileContent1,
+	Filename:    "invoice.pdf",
+	ContentType: "application/pdf",
+}
+
+attachment2 := &resend.Attachment{
+	Path:        "https://example.com/receipt.pdf",
+	Filename:    "receipt.pdf",
+	ContentType: "application/pdf",
+}
+
+params := &resend.SendEmailRequest{
+	To:          []string{"delivered@resend.dev"},
+	From:        "onboarding@resend.dev",
+	Text:        "Please find your documents attached",
+	Subject:     "Your Documents",
+	Attachments: []*resend.Attachment{attachment1, attachment2},
+}
+
+sent, err := client.Emails.SendWithContext(ctx, params)
+```
+
+</CodeGroup>
+
+## Retrieve Email Details
+
+Get information about a sent email:
+
+```go
+// Get email by ID
+email, err := client.Emails.GetWithContext(ctx, sent.Id)
+if err != nil {
+	panic(err)
+}
+
+fmt.Printf("Email ID: %s\n", email.Id)
+fmt.Printf("Subject: %s\n", email.Subject)
+fmt.Printf("To: %v\n", email.To)
+fmt.Printf("From: %s\n", email.From)
+```
+
+## List Sent Emails
+
+Retrieve a list of sent emails with pagination:
+
+<Tabs>
+  <Tab title="Basic Listing">
+    ```go
+    listResp, err := client.Emails.ListWithContext(ctx)
+    if err != nil {
+    	panic(err)
+    }
+
+    fmt.Printf("Found %d emails\n", len(listResp.Data))
+    fmt.Printf("Has more emails: %v\n", listResp.HasMore)
+
+    for _, email := range listResp.Data {
+    	fmt.Printf("ID: %s, Subject: %s, To: %v\n",
+    		email.Id, email.Subject, email.To)
+    }
+    ```
+  </Tab>
+  <Tab title="With Limit">
+    ```go
+    limit := 10
+    listResp, err := client.Emails.ListWithOptions(ctx, &resend.ListOptions{
+    	Limit: &limit,
+    })
+    if err != nil {
+    	panic(err)
+    }
+
+    fmt.Printf("Found %d emails (limited to 10)\n", len(listResp.Data))
+    ```
+  </Tab>
+  <Tab title="Cursor Pagination">
+    ```go
+    limit := 10
+    paginatedResp, err := client.Emails.ListWithOptions(ctx, &resend.ListOptions{
+    	Limit: &limit,
+    })
+    if err != nil {
+    	panic(err)
+    }
+
+    // Fetch next page
+    if paginatedResp.HasMore && len(paginatedResp.Data) > 0 {
+    	lastEmailID := paginatedResp.Data[len(paginatedResp.Data)-1].Id
+
+    	nextPage, err := client.Emails.ListWithOptions(ctx, &resend.ListOptions{
+    		Limit: &limit,
+    		After: &lastEmailID,
+    	})
+    	if err != nil {
+    		panic(err)
+    	}
+
+    	fmt.Printf("Found %d more emails in next page\n", len(nextPage.Data))
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Manage Attachments
+
+List and retrieve email attachments:
+
+```go
+// List all attachments for an email
+attachments, err := client.Emails.ListAttachmentsWithContext(ctx, emailId)
+if err != nil {
+	panic(err)
+}
+
+fmt.Printf("Found %d attachments\n", len(attachments.Data))
+for _, att := range attachments.Data {
+	fmt.Printf("- ID: %s, Filename: %s, ContentType: %s\n",
+		att.Id, att.Filename, att.ContentType)
+}
+
+// Get a specific attachment
+if len(attachments.Data) > 0 {
+	attachmentId := attachments.Data[0].Id
+	attachment, err := client.Emails.GetAttachment(emailId, attachmentId)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Retrieved: %s (%s)\n", attachment.Filename, attachment.ContentType)
+}
+```
+
+## Complete Example
+
+Here's a complete example from [examples/send_email.go](https://github.com/resend/resend-go/blob/main/examples/send_email.go):
+
+```go examples/send_email.go
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	ctx := context.TODO()
+	apiKey := os.Getenv("RESEND_API_KEY")
+
+	client := resend.NewClient(apiKey)
+
+	// Send params
+	params := &resend.SendEmailRequest{
+		To:      []string{"delivered@resend.dev"},
+		From:    "onboarding@resend.dev",
+		Text:    "hello world",
+		Subject: "Hello from Golang",
+		Cc:      []string{"cc@example.com"},
+		Bcc:     []string{"bcc@example.com"},
+		ReplyTo: "support@example.com",
+	}
+
+	sent, err := client.Emails.SendWithContext(ctx, params)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Sent email: %s\n", sent.Id)
+
+	// Get email details
+	email, err := client.Emails.GetWithContext(ctx, sent.Id)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Email details: %+v\n", email)
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Templates" icon="file-code" href="/examples/templates">
+    Use email templates with dynamic variables
+  </Card>
+  <Card title="Error Handling" icon="triangle-exclamation" href="/examples/error-handling">
+    Handle rate limits and validation errors
+  </Card>
+  <Card title="Custom Client" icon="gear" href="/examples/custom-client">
+    Configure HTTP client with custom timeouts and retry logic
+  </Card>
+  <Card title="API Reference" icon="book" href="/api-reference/emails/send">
+    View complete API documentation
+  </Card>
+</CardGroup>

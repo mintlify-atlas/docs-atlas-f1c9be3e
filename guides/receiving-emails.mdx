@@ -1,0 +1,655 @@
+---
+title: Receiving Emails
+description: Learn how to receive and process inbound emails with the Resend Go SDK
+---
+
+The Receiving API allows you to access inbound emails sent to your domains. This guide covers retrieving received emails and downloading attachments with the Resend Go SDK.
+
+## Overview
+
+The Receiving service provides:
+- Access to inbound emails sent to your verified domains
+- Full email content including HTML, text, and headers
+- Attachment management with download URLs
+- Pagination for listing large volumes of received emails
+
+<Note>
+  Inbound email functionality must be enabled on your Resend account. Contact Resend support to enable this feature.
+</Note>
+
+## Accessing the Receiving Service
+
+The Receiving service is accessed through the `Client.Emails.Receiving` interface.
+
+```go Initialize Client
+import (
+    "github.com/resend/resend-go/v3"
+)
+
+client := resend.NewClient("re_123456789")
+
+// Access receiving methods
+email, err := client.Emails.Receiving.Get("email-id")
+```
+
+## Retrieving a Received Email
+
+Get the full content of a specific inbound email by ID.
+
+```go Get Received Email
+import (
+    "context"
+    "fmt"
+)
+
+ctx := context.Background()
+
+email, err := client.Emails.Receiving.GetWithContext(ctx, "8136d3fb-0439-4b09-b939-b8436a3524b6")
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Subject:", email.Subject)
+fmt.Println("From:", email.From)
+fmt.Println("To:", email.To)
+fmt.Println("Received:", email.CreatedAt)
+fmt.Println("\nHTML Body:")
+fmt.Println(email.Html)
+fmt.Println("\nText Body:")
+fmt.Println(email.Text)
+```
+
+### ReceivedEmail Structure
+
+The `ReceivedEmail` struct contains complete email information:
+
+<ParamField path="Id" type="string">
+  Unique identifier for the received email
+</ParamField>
+
+<ParamField path="Object" type="string">
+  Always "email" for received emails
+</ParamField>
+
+<ParamField path="To" type="[]string">
+  Array of recipient email addresses
+</ParamField>
+
+<ParamField path="From" type="string">
+  Sender email address
+</ParamField>
+
+<ParamField path="Subject" type="string">
+  Email subject line
+</ParamField>
+
+<ParamField path="Html" type="string">
+  HTML version of the email body
+</ParamField>
+
+<ParamField path="Text" type="string">
+  Plain text version of the email body
+</ParamField>
+
+<ParamField path="Cc" type="[]string">
+  Array of CC recipient email addresses
+</ParamField>
+
+<ParamField path="Bcc" type="[]string">
+  Array of BCC recipient email addresses
+</ParamField>
+
+<ParamField path="ReplyTo" type="[]string">
+  Array of reply-to email addresses
+</ParamField>
+
+<ParamField path="Headers" type="map[string]string">
+  Email headers as key-value pairs
+</ParamField>
+
+<ParamField path="MessageId" type="string">
+  Message-ID header value
+</ParamField>
+
+<ParamField path="CreatedAt" type="string">
+  Timestamp when the email was received
+</ParamField>
+
+<ParamField path="Attachments" type="[]ReceivedAttachment">
+  Array of attachment metadata
+</ParamField>
+
+<ParamField path="Raw" type="RawEmail">
+  Raw email download information
+</ParamField>
+
+## Listing Received Emails
+
+Retrieve all received emails with optional pagination.
+
+<CodeGroup>
+```go List All Received Emails
+emails, err := client.Emails.Receiving.List()
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("You have %d received email(s)\n", len(emails.Data))
+
+for _, email := range emails.Data {
+    fmt.Printf("\n[%s] %s\n", email.CreatedAt, email.Subject)
+    fmt.Printf("  From: %s\n", email.From)
+    fmt.Printf("  To: %v\n", email.To)
+    fmt.Printf("  Attachments: %d\n", len(email.Attachments))
+}
+
+fmt.Printf("\nHas more: %v\n", emails.HasMore)
+```
+
+```go With Pagination
+import "context"
+
+limit := 25
+options := &resend.ListOptions{
+    Limit: &limit,
+}
+
+emails, err := client.Emails.Receiving.ListWithOptions(context.Background(), options)
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Retrieved %d emails\n", len(emails.Data))
+fmt.Printf("Has more: %v\n", emails.HasMore)
+```
+
+```go Using Context
+ctx := context.WithTimeout(context.Background(), 10*time.Second)
+
+emails, err := client.Emails.Receiving.ListWithContext(ctx)
+if err != nil {
+    panic(err)
+}
+```
+</CodeGroup>
+
+<Note>
+  The list response uses `ListReceivedEmail` which omits `Html`, `Text`, and `Headers` fields for efficiency. Use `Get()` to retrieve full email content.
+</Note>
+
+## Working with Email Headers
+
+Access email headers for advanced processing:
+
+```go Accessing Email Headers
+email, err := client.Emails.Receiving.Get("email-id")
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Email Headers:")
+for key, value := range email.Headers {
+    fmt.Printf("%s: %s\n", key, value)
+}
+
+// Access specific headers
+if spfResult, ok := email.Headers["received-spf"]; ok {
+    fmt.Println("SPF Result:", spfResult)
+}
+
+if dkimResult, ok := email.Headers["dkim-signature"]; ok {
+    fmt.Println("DKIM Signature:", dkimResult)
+}
+```
+
+## Managing Attachments
+
+Received emails can include attachments. The SDK provides methods to list and retrieve attachment details including download URLs.
+
+### Listing Attachments
+
+<CodeGroup>
+```go From Email Object
+email, err := client.Emails.Receiving.Get("email-id")
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Email has %d attachment(s)\n", len(email.Attachments))
+
+for _, att := range email.Attachments {
+    fmt.Printf("\nAttachment: %s\n", att.Filename)
+    fmt.Printf("  Type: %s\n", att.ContentType)
+    fmt.Printf("  ID: %s\n", att.Id)
+}
+```
+
+```go List Attachments Endpoint
+attachments, err := client.Emails.Receiving.ListAttachments("email-id")
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Found %d attachment(s)\n", len(attachments.Data))
+
+for _, att := range attachments.Data {
+    fmt.Printf("%s (%s)\n", att.Filename, att.ContentType)
+}
+```
+
+```go With Pagination
+limit := 10
+options := &resend.ListOptions{
+    Limit: &limit,
+}
+
+attachments, err := client.Emails.Receiving.ListAttachmentsWithOptions(
+    context.Background(),
+    "email-id",
+    options,
+)
+```
+</CodeGroup>
+
+### ReceivedAttachment Structure
+
+<ParamField path="Id" type="string">
+  Unique identifier for the attachment
+</ParamField>
+
+<ParamField path="Filename" type="string">
+  Original filename of the attachment
+</ParamField>
+
+<ParamField path="ContentType" type="string">
+  MIME type of the attachment (e.g., "application/pdf", "image/png")
+</ParamField>
+
+<ParamField path="ContentDisposition" type="string">
+  Content-Disposition header value (e.g., "attachment", "inline")
+</ParamField>
+
+<ParamField path="ContentId" type="string">
+  Content-ID for inline attachments (used in HTML emails)
+</ParamField>
+
+## Downloading Attachments
+
+Get attachment details including temporary download URLs.
+
+```go Get Attachment Details
+ctx := context.Background()
+emailId := "8136d3fb-0439-4b09-b939-b8436a3524b6"
+attachmentId := "att-123456"
+
+attachment, err := client.Emails.Receiving.GetAttachmentWithContext(
+    ctx,
+    emailId,
+    attachmentId,
+)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Filename:", attachment.Filename)
+fmt.Println("Content Type:", attachment.ContentType)
+fmt.Println("Download URL:", attachment.DownloadUrl)
+fmt.Println("Expires At:", attachment.ExpiresAt)
+```
+
+### EmailAttachment Structure
+
+<ParamField path="Id" type="string">
+  Unique identifier for the attachment
+</ParamField>
+
+<ParamField path="Filename" type="string">
+  Original filename of the attachment
+</ParamField>
+
+<ParamField path="ContentType" type="string">
+  MIME type of the attachment
+</ParamField>
+
+<ParamField path="ContentDisposition" type="string">
+  Content-Disposition header value
+</ParamField>
+
+<ParamField path="ContentId" type="string">
+  Content-ID for inline attachments
+</ParamField>
+
+<ParamField path="DownloadUrl" type="string">
+  Temporary pre-signed URL for downloading the attachment
+</ParamField>
+
+<ParamField path="ExpiresAt" type="string">
+  Timestamp when the download URL expires
+</ParamField>
+
+### Downloading Attachment Files
+
+Use the download URL to fetch attachment content:
+
+```go Download Attachment
+import (
+    "io"
+    "net/http"
+    "os"
+)
+
+attachment, err := client.Emails.Receiving.GetAttachment(emailId, attachmentId)
+if err != nil {
+    panic(err)
+}
+
+// Download the file
+resp, err := http.Get(attachment.DownloadUrl)
+if err != nil {
+    panic(err)
+}
+defer resp.Body.Close()
+
+// Save to disk
+file, err := os.Create(attachment.Filename)
+if err != nil {
+    panic(err)
+}
+defer file.Close()
+
+bytesWritten, err := io.Copy(file, resp.Body)
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Downloaded %d bytes to %s\n", bytesWritten, attachment.Filename)
+```
+
+<Warning>
+  Download URLs are temporary and expire after a set period. Always download attachments promptly or store the URLs for short-term use only.
+</Warning>
+
+## Complete Example
+
+Here's a complete example demonstrating received email processing:
+
+```go Complete Receiving Workflow
+package main
+
+import (
+    "context"
+    "fmt"
+    "io"
+    "net/http"
+    "os"
+    
+    "github.com/resend/resend-go/v3"
+)
+
+func main() {
+    ctx := context.Background()
+    apiKey := os.Getenv("RESEND_API_KEY")
+    client := resend.NewClient(apiKey)
+
+    // 1. List all received emails
+    fmt.Println("Fetching received emails...")
+    emails, err := client.Emails.Receiving.ListWithContext(ctx)
+    if err != nil {
+        panic(err)
+    }
+    
+    fmt.Printf("\nFound %d received email(s)\n", len(emails.Data))
+    
+    if len(emails.Data) == 0 {
+        fmt.Println("No received emails found")
+        return
+    }
+
+    // 2. Get details of the first email
+    firstEmail := emails.Data[0]
+    fmt.Printf("\nRetrieving full details for: %s\n", firstEmail.Subject)
+    
+    email, err := client.Emails.Receiving.GetWithContext(ctx, firstEmail.Id)
+    if err != nil {
+        panic(err)
+    }
+
+    // 3. Display email details
+    fmt.Printf("\n=== Email Details ===\n")
+    fmt.Printf("Subject: %s\n", email.Subject)
+    fmt.Printf("From: %s\n", email.From)
+    fmt.Printf("To: %v\n", email.To)
+    fmt.Printf("Received: %s\n", email.CreatedAt)
+    fmt.Printf("Message ID: %s\n", email.MessageId)
+    
+    if len(email.Cc) > 0 {
+        fmt.Printf("CC: %v\n", email.Cc)
+    }
+    
+    if len(email.ReplyTo) > 0 {
+        fmt.Printf("Reply-To: %v\n", email.ReplyTo)
+    }
+
+    // 4. Display headers
+    fmt.Printf("\n=== Headers ===\n")
+    for key, value := range email.Headers {
+        fmt.Printf("%s: %s\n", key, value)
+    }
+
+    // 5. Display body preview
+    fmt.Printf("\n=== Body Preview ===\n")
+    if len(email.Text) > 200 {
+        fmt.Printf("%s...\n", email.Text[:200])
+    } else {
+        fmt.Println(email.Text)
+    }
+
+    // 6. Process attachments
+    if len(email.Attachments) > 0 {
+        fmt.Printf("\n=== Attachments (%d) ===\n", len(email.Attachments))
+        
+        for i, att := range email.Attachments {
+            fmt.Printf("\n[%d] %s\n", i+1, att.Filename)
+            fmt.Printf("    Type: %s\n", att.ContentType)
+            fmt.Printf("    ID: %s\n", att.Id)
+            
+            // Get attachment with download URL
+            fullAttachment, err := client.Emails.Receiving.GetAttachmentWithContext(
+                ctx,
+                email.Id,
+                att.Id,
+            )
+            if err != nil {
+                fmt.Printf("    Error: %v\n", err)
+                continue
+            }
+            
+            fmt.Printf("    Download URL: %s\n", fullAttachment.DownloadUrl)
+            fmt.Printf("    Expires: %s\n", fullAttachment.ExpiresAt)
+            
+            // Download the attachment
+            if err := downloadAttachment(fullAttachment); err != nil {
+                fmt.Printf("    Download failed: %v\n", err)
+            } else {
+                fmt.Printf("    ✓ Downloaded successfully\n")
+            }
+        }
+    } else {
+        fmt.Println("\nNo attachments")
+    }
+
+    // 7. Access raw email
+    if email.Raw.DownloadUrl != "" {
+        fmt.Printf("\n=== Raw Email ===\n")
+        fmt.Printf("Download URL: %s\n", email.Raw.DownloadUrl)
+        fmt.Printf("Expires: %s\n", email.Raw.ExpiresAt)
+    }
+
+    // 8. List attachments using dedicated endpoint
+    attachmentsList, err := client.Emails.Receiving.ListAttachmentsWithContext(ctx, email.Id)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("\nAttachments list returned %d item(s)\n", len(attachmentsList.Data))
+}
+
+func downloadAttachment(attachment *resend.EmailAttachment) error {
+    resp, err := http.Get(attachment.DownloadUrl)
+    if err != nil {
+        return err
+    }
+    defer resp.Body.Close()
+
+    if resp.StatusCode != http.StatusOK {
+        return fmt.Errorf("download failed with status: %s", resp.Status)
+    }
+
+    file, err := os.Create(attachment.Filename)
+    if err != nil {
+        return err
+    }
+    defer file.Close()
+
+    _, err = io.Copy(file, resp.Body)
+    return err
+}
+```
+
+## Processing Patterns
+
+### Auto-Response System
+
+```go Auto-Responder
+func processInboundEmails(client *resend.Client) {
+    emails, err := client.Emails.Receiving.List()
+    if err != nil {
+        panic(err)
+    }
+
+    for _, email := range emails.Data {
+        // Check if we've already processed this email
+        if alreadyProcessed(email.Id) {
+            continue
+        }
+
+        // Get full email details
+        fullEmail, err := client.Emails.Receiving.Get(email.Id)
+        if err != nil {
+            log.Printf("Error retrieving email %s: %v", email.Id, err)
+            continue
+        }
+
+        // Send auto-response
+        _, err = client.Emails.Send(&resend.SendEmailRequest{
+            From:    "support@example.com",
+            To:      []string{fullEmail.From},
+            Subject: fmt.Sprintf("Re: %s", fullEmail.Subject),
+            Html:    generateAutoResponseHTML(fullEmail),
+        })
+
+        if err != nil {
+            log.Printf("Failed to send auto-response: %v", err)
+        } else {
+            markAsProcessed(email.Id)
+        }
+    }
+}
+```
+
+### Support Ticket Creation
+
+```go Ticket System Integration
+func createSupportTickets(client *resend.Client) {
+    emails, err := client.Emails.Receiving.List()
+    if err != nil {
+        panic(err)
+    }
+
+    for _, email := range emails.Data {
+        fullEmail, err := client.Emails.Receiving.Get(email.Id)
+        if err != nil {
+            continue
+        }
+
+        // Create support ticket
+        ticket := SupportTicket{
+            Subject:     fullEmail.Subject,
+            From:        fullEmail.From,
+            Body:        fullEmail.Text,
+            HTMLBody:    fullEmail.Html,
+            ReceivedAt:  fullEmail.CreatedAt,
+            MessageId:   fullEmail.MessageId,
+        }
+
+        // Download attachments
+        for _, att := range fullEmail.Attachments {
+            attachment, err := client.Emails.Receiving.GetAttachment(
+                fullEmail.Id,
+                att.Id,
+            )
+            if err != nil {
+                continue
+            }
+
+            ticket.Attachments = append(ticket.Attachments, TicketAttachment{
+                Filename:    attachment.Filename,
+                ContentType: attachment.ContentType,
+                URL:         attachment.DownloadUrl,
+            })
+        }
+
+        // Save to ticket system
+        if err := saveTicket(ticket); err != nil {
+            log.Printf("Failed to create ticket: %v", err)
+        }
+    }
+}
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Pagination" icon="list">
+    Always use pagination when listing large volumes of received emails to avoid memory issues.
+  </Card>
+  
+  <Card title="Download Attachments Promptly" icon="download">
+    Attachment download URLs expire. Download and store attachments as soon as possible.
+  </Card>
+  
+  <Card title="Track Processed Emails" icon="check">
+    Maintain a record of processed email IDs to avoid duplicate processing.
+  </Card>
+  
+  <Card title="Handle Errors Gracefully" icon="circle-exclamation">
+    Implement robust error handling for network issues and missing emails.
+  </Card>
+  
+  <Card title="Parse Headers Carefully" icon="magnifying-glass">
+    Check for header existence before accessing to avoid nil pointer errors.
+  </Card>
+  
+  <Card title="Use Context Timeouts" icon="clock">
+    Set appropriate timeouts when processing emails to prevent hanging operations.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Webhooks" icon="webhook" href="/guides/webhooks">
+    Set up webhooks to receive notifications of inbound emails
+  </Card>
+  
+  <Card title="Sending Emails" icon="paper-plane" href="/quickstart">
+    Learn how to send emails with attachments
+  </Card>
+  
+  <Card title="Receiving Example" icon="code" href="https://github.com/resend/resend-go/blob/main/examples/receiving.go">
+    View the complete receiving emails example
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="https://resend.com/docs/api-reference/emails/retrieve-received-email">
+    View the complete Receiving API reference
+  </Card>
+</CardGroup>

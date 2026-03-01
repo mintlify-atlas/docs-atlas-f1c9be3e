@@ -1,0 +1,639 @@
+---
+title: 'Email Attachments'
+description: 'Add file attachments and inline images to your emails'
+---
+
+The Resend Go SDK supports adding file attachments to emails, either from local content or remote URLs, including inline attachments for embedding images in HTML.
+
+## Quick Start
+
+Here's how to send an email with attachments:
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	ctx := context.Background()
+	apiKey := os.Getenv("RESEND_API_KEY")
+
+	client := resend.NewClient(apiKey)
+
+	// Read file from disk
+	fileContent, err := os.ReadFile("invoice.pdf")
+	if err != nil {
+		panic(err)
+	}
+
+	// Create attachment
+	attachment := &resend.Attachment{
+		Content:     fileContent,
+		Filename:    "invoice.pdf",
+		ContentType: "application/pdf",
+	}
+
+	// Send email with attachment
+	params := &resend.SendEmailRequest{
+		To:          []string{"user@example.com"},
+		From:        "billing@yourdomain.com",
+		Subject:     "Your Invoice",
+		Html:        "<p>Please find your invoice attached.</p>",
+		Attachments: []*resend.Attachment{attachment},
+	}
+
+	sent, err := client.Emails.SendWithContext(ctx, params)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Email sent: %s\n", sent.Id)
+}
+```
+
+## Attachment Struct
+
+The `Attachment` struct supports the following fields:
+
+<ParamField path="content" type="[]byte">
+  Binary content of the attachment. Use when providing file content directly instead of a remote path.
+</ParamField>
+
+<ParamField path="filename" type="string" required>
+  Filename that will appear in the email. Choose the correct extension for proper preview behavior.
+</ParamField>
+
+<ParamField path="path" type="string">
+  URL where the attachment file is hosted. Use instead of providing `Content` directly.
+</ParamField>
+
+<ParamField path="contentType" type="string">
+  MIME type for the attachment (e.g., `application/pdf`, `image/png`). If not set, it will be derived from the `Filename`.
+</ParamField>
+
+<ParamField path="contentId" type="string">
+  Optional content ID for inline attachments. Set this to reference the attachment in HTML using `cid:` prefix. Makes the attachment inline.
+</ParamField>
+
+<Note>
+  You must provide either `Content` or `Path`, but not both.
+</Note>
+
+Source: [emails.go:117](emails.go:117)
+
+## Adding Attachments from Local Files
+
+Read a file from disk and attach it to an email:
+
+```go
+ctx := context.Background()
+
+// Read attachment file
+fileContent, err := os.ReadFile("./documents/invoice.pdf")
+if err != nil {
+	panic(err)
+}
+
+// Create attachment from file content
+pdfAttachment := &resend.Attachment{
+	Content:     fileContent,
+	Filename:    "invoice.pdf",
+	ContentType: "application/pdf",
+}
+
+params := &resend.SendEmailRequest{
+	To:          []string{"delivered@resend.dev"},
+	From:        "onboarding@resend.dev",
+	Subject:     "Email with attachment",
+	Html:        "<strong>email with attachments !!</strong>",
+	Attachments: []*resend.Attachment{pdfAttachment},
+}
+
+sent, err := client.Emails.SendWithContext(ctx, params)
+if err != nil {
+	panic(err)
+}
+
+fmt.Println("Sent email ID:", sent.Id)
+```
+
+Source: [examples/with_attachments.go:20](examples/with_attachments.go:20)
+
+## Adding Attachments from Remote URLs
+
+You can attach files hosted at remote URLs without downloading them first:
+
+```go
+pdfAttachmentFromURL := &resend.Attachment{
+	Path:        "https://example.com/files/invoice.pdf",
+	Filename:    "invoice.pdf",
+	ContentType: "application/pdf",
+}
+
+params := &resend.SendEmailRequest{
+	To:          []string{"user@example.com"},
+	From:        "noreply@yourdomain.com",
+	Subject:     "Document Attached",
+	Text:        "Please find the document attached.",
+	Attachments: []*resend.Attachment{pdfAttachmentFromURL},
+}
+
+sent, err := client.Emails.Send(params)
+```
+
+Source: [examples/with_attachments.go:35](examples/with_attachments.go:35)
+
+<Tip>
+  Using remote URLs via `Path` is more efficient for large files since the SDK doesn't need to load them into memory.
+</Tip>
+
+## Multiple Attachments
+
+You can attach multiple files to a single email:
+
+```go
+ctx := context.Background()
+
+// Read local file
+localFile, err := os.ReadFile("./invoice.pdf")
+if err != nil {
+	panic(err)
+}
+
+// Create multiple attachments
+attachments := []*resend.Attachment{
+	{
+		Content:     localFile,
+		Filename:    "invoice1.pdf",
+		ContentType: "application/pdf",
+	},
+	{
+		Path:        "https://github.com/resend/resend-go/raw/main/resources/invoice.pdf",
+		Filename:    "invoice2.pdf",
+		ContentType: "application/pdf",
+	},
+}
+
+params := &resend.SendEmailRequest{
+	To:          []string{"delivered@resend.dev"},
+	From:        "onboarding@resend.dev",
+	Subject:     "Email with multiple attachments",
+	Html:        "<p>Please find the attached documents.</p>",
+	Attachments: attachments,
+}
+
+sent, err := client.Emails.SendWithContext(ctx, params)
+if err != nil {
+	panic(err)
+}
+```
+
+Source: [examples/with_attachments.go:29](examples/with_attachments.go:29)
+
+## Inline Attachments
+
+Inline attachments allow you to embed images directly in your HTML content using the `cid:` (Content-ID) reference.
+
+### Basic Inline Attachment
+
+```go
+ctx := context.Background()
+
+// Create inline attachment with ContentId
+inlineAttachment := &resend.Attachment{
+	Path:      "https://resend.com/static/brand/resend-wordmark-black.png",
+	Filename:  "resend-wordmark-black.png",
+	ContentId: "my-test-image",
+}
+
+params := &resend.SendEmailRequest{
+	To:      []string{"delivered@resend.dev"},
+	From:    "onboarding@resend.dev",
+	Subject: "Email with inline attachment",
+	Html:    `<p>This is an email with an <img width="100" height="40" src="cid:my-test-image" /> embedded image</p>`,
+	Attachments: []*resend.Attachment{inlineAttachment},
+}
+
+sent, err := client.Emails.SendWithContext(ctx, params)
+if err != nil {
+	panic(err)
+}
+
+fmt.Println("Sent email with inline image:", sent.Id)
+```
+
+Source: [examples/with_inline_attachments.go:22](examples/with_inline_attachments.go:22)
+
+### How Inline Attachments Work
+
+<Steps>
+  <Step title="Set ContentId">
+    Assign a unique `ContentId` to your attachment:
+    
+    ```go
+    attachment := &resend.Attachment{
+        Path:      "logo.png",
+        Filename:  "logo.png",
+        ContentId: "company-logo", // Unique ID
+    }
+    ```
+  </Step>
+  
+  <Step title="Reference in HTML">
+    Use the `cid:` prefix in your HTML `src` attribute:
+    
+    ```go
+    Html: `<img src="cid:company-logo" alt="Logo" />`
+    ```
+  </Step>
+  
+  <Step title="Send Email">
+    The image will be embedded directly in the email:
+    
+    ```go
+    params := &resend.SendEmailRequest{
+        // ...
+        Html: `<img src="cid:company-logo" />`,
+        Attachments: []*resend.Attachment{attachment},
+    }
+    ```
+  </Step>
+</Steps>
+
+### Multiple Inline Images
+
+```go
+attachments := []*resend.Attachment{
+	{
+		Path:      "https://example.com/logo.png",
+		Filename:  "logo.png",
+		ContentId: "logo",
+	},
+	{
+		Path:      "https://example.com/banner.jpg",
+		Filename:  "banner.jpg",
+		ContentId: "banner",
+	},
+}
+
+html := `
+<html>
+	<body>
+		<img src="cid:logo" width="150" />
+		<h1>Welcome!</h1>
+		<img src="cid:banner" width="600" />
+		<p>Thank you for joining us.</p>
+	</body>
+</html>
+`
+
+params := &resend.SendEmailRequest{
+	To:          []string{"user@example.com"},
+	From:        "noreply@yourdomain.com",
+	Subject:     "Welcome Email",
+	Html:        html,
+	Attachments: attachments,
+}
+```
+
+<Warning>
+  Each inline attachment must have a unique `ContentId` within the same email.
+</Warning>
+
+## Content Types
+
+Common MIME types for attachments:
+
+<Tabs>
+  <Tab title="Documents">
+    ```go
+    // PDF
+    ContentType: "application/pdf"
+    
+    // Word Document
+    ContentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    
+    // Excel Spreadsheet
+    ContentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    
+    // Plain Text
+    ContentType: "text/plain"
+    
+    // CSV
+    ContentType: "text/csv"
+    ```
+  </Tab>
+  
+  <Tab title="Images">
+    ```go
+    // PNG
+    ContentType: "image/png"
+    
+    // JPEG
+    ContentType: "image/jpeg"
+    
+    // GIF
+    ContentType: "image/gif"
+    
+    // SVG
+    ContentType: "image/svg+xml"
+    
+    // WebP
+    ContentType: "image/webp"
+    ```
+  </Tab>
+  
+  <Tab title="Archives">
+    ```go
+    // ZIP
+    ContentType: "application/zip"
+    
+    // TAR
+    ContentType: "application/x-tar"
+    
+    // GZIP
+    ContentType: "application/gzip"
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  If `ContentType` is not specified, Resend will attempt to derive it from the `Filename` extension.
+</Note>
+
+## Retrieving Attachments
+
+You can retrieve attachment information for sent emails:
+
+### List All Attachments
+
+```go
+ctx := context.Background()
+emailId := "49a3999c-0ce1-4ea6-ab68-afcd6dc2e794"
+
+// List all attachments for an email
+attachments, err := client.Emails.ListAttachmentsWithContext(ctx, emailId)
+if err != nil {
+	panic(err)
+}
+
+fmt.Printf("Found %d attachments\n", len(attachments.Data))
+for _, att := range attachments.Data {
+	fmt.Printf("- ID: %s, Filename: %s, ContentType: %s\n",
+		att.Id, att.Filename, att.ContentType)
+}
+```
+
+Source: [examples/with_attachments.go:56](examples/with_attachments.go:56)
+
+### List with Pagination
+
+```go
+ctx := context.Background()
+emailId := "49a3999c-0ce1-4ea6-ab68-afcd6dc2e794"
+
+limit := 10
+attachments, err := client.Emails.ListAttachmentsWithOptions(ctx, emailId, &resend.ListOptions{
+	Limit: &limit,
+})
+if err != nil {
+	panic(err)
+}
+
+fmt.Printf("Found %d attachments (limit: %d)\n", len(attachments.Data), limit)
+```
+
+Source: [examples/with_attachments.go:74](examples/with_attachments.go:74)
+
+### Get Specific Attachment
+
+```go
+ctx := context.Background()
+emailId := "49a3999c-0ce1-4ea6-ab68-afcd6dc2e794"
+attachmentId := "dac877a6-5ae3-4164-a4fa-ff02c3e27b7e"
+
+attachment, err := client.Emails.GetAttachmentWithContext(ctx, emailId, attachmentId)
+if err != nil {
+	panic(err)
+}
+
+fmt.Printf("Attachment: %s (%s)\n", attachment.Filename, attachment.ContentType)
+fmt.Printf("Download URL: %s\n", attachment.DownloadUrl)
+fmt.Printf("Expires at: %s\n", attachment.ExpiresAt)
+```
+
+Source: [examples/with_attachments.go:86](examples/with_attachments.go:86)
+
+## EmailAttachment Response
+
+The `EmailAttachment` struct returned from retrieval methods includes:
+
+<ParamField path="id" type="string">
+  Unique identifier for the attachment.
+</ParamField>
+
+<ParamField path="filename" type="string">
+  Name of the attached file.
+</ParamField>
+
+<ParamField path="contentType" type="string">
+  MIME type of the attachment.
+</ParamField>
+
+<ParamField path="contentDisposition" type="string">
+  Content disposition (e.g., `attachment` or `inline`).
+</ParamField>
+
+<ParamField path="contentId" type="string">
+  Content ID if this was an inline attachment.
+</ParamField>
+
+<ParamField path="downloadUrl" type="string">
+  Temporary URL to download the attachment.
+</ParamField>
+
+<ParamField path="expiresAt" type="string">
+  ISO 8601 timestamp when the download URL expires.
+</ParamField>
+
+Source: [emails.go:96](emails.go:96)
+
+## Common Use Cases
+
+<AccordionGroup>
+  <Accordion title="Invoice Emails">
+    ```go
+    // Generate or read invoice PDF
+    invoicePDF, _ := os.ReadFile("invoice-12345.pdf")
+    
+    attachment := &resend.Attachment{
+        Content:     invoicePDF,
+        Filename:    "invoice-12345.pdf",
+        ContentType: "application/pdf",
+    }
+    
+    params := &resend.SendEmailRequest{
+        To:          []string{"customer@example.com"},
+        From:        "billing@yourdomain.com",
+        Subject:     "Invoice #12345",
+        Html:        "<p>Please find your invoice attached.</p>",
+        Attachments: []*resend.Attachment{attachment},
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Newsletter with Embedded Images">
+    ```go
+    attachments := []*resend.Attachment{
+        {
+            Path:      "https://cdn.example.com/header.png",
+            Filename:  "header.png",
+            ContentId: "header",
+        },
+        {
+            Path:      "https://cdn.example.com/footer.png",
+            Filename:  "footer.png",
+            ContentId: "footer",
+        },
+    }
+    
+    html := `
+    <html>
+        <body>
+            <img src="cid:header" width="600" />
+            <h1>Monthly Newsletter</h1>
+            <p>Content here...</p>
+            <img src="cid:footer" width="600" />
+        </body>
+    </html>
+    `
+    
+    params := &resend.SendEmailRequest{
+        To:          []string{"subscriber@example.com"},
+        From:        "newsletter@yourdomain.com",
+        Subject:     "Monthly Newsletter - January 2024",
+        Html:        html,
+        Attachments: attachments,
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Report with Multiple Files">
+    ```go
+    csvReport, _ := os.ReadFile("report.csv")
+    pdfSummary, _ := os.ReadFile("summary.pdf")
+    
+    attachments := []*resend.Attachment{
+        {
+            Content:     csvReport,
+            Filename:    "monthly-report.csv",
+            ContentType: "text/csv",
+        },
+        {
+            Content:     pdfSummary,
+            Filename:    "executive-summary.pdf",
+            ContentType: "application/pdf",
+        },
+    }
+    
+    params := &resend.SendEmailRequest{
+        To:          []string{"manager@example.com"},
+        From:        "reports@yourdomain.com",
+        Subject:     "Monthly Report - January 2024",
+        Html:        "<p>Please find the monthly report and summary attached.</p>",
+        Attachments: attachments,
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<Steps>
+  <Step title="Specify Content Types">
+    Always specify `ContentType` for better email client compatibility:
+    
+    ```go
+    attachment := &resend.Attachment{
+        Content:     fileData,
+        Filename:    "document.pdf",
+        ContentType: "application/pdf", // Explicit is better
+    }
+    ```
+  </Step>
+  
+  <Step title="Use Descriptive Filenames">
+    Choose clear, descriptive filenames with proper extensions:
+    
+    ```go
+    Filename: "invoice-2024-01-15.pdf" // Good
+    // Not: "doc.pdf" // Too vague
+    ```
+  </Step>
+  
+  <Step title="Optimize File Sizes">
+    Keep attachments reasonably sized. Compress large files before attaching:
+    
+    ```go
+    // For images, use compressed formats
+    ContentType: "image/webp" // Smaller than PNG/JPEG
+    
+    // For documents, consider PDF compression
+    ```
+  </Step>
+  
+  <Step title="Use Remote URLs for Large Files">
+    For large files, use `Path` instead of `Content` to avoid memory issues:
+    
+    ```go
+    attachment := &resend.Attachment{
+        Path:     "https://cdn.example.com/large-file.pdf",
+        Filename: "large-file.pdf",
+    }
+    ```
+  </Step>
+  
+  <Step title="Unique ContentIds for Inline">
+    Use unique, descriptive `ContentId` values for inline attachments:
+    
+    ```go
+    ContentId: "company-logo-2024" // Good, unique and descriptive
+    // Not: "img1" // Too generic
+    ```
+  </Step>
+</Steps>
+
+## Size Limits
+
+<Warning>
+  **Attachment Size Limits:**
+  - Maximum total attachment size per email: 25 MB
+  - Individual attachment size: No specific limit, but keep under 25 MB total
+  - Consider using cloud storage links for files larger than 10 MB
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Sending Emails" icon="paper-plane" href="/guides/sending-emails">
+    Learn the basics of sending emails
+  </Card>
+  
+  <Card title="Email Templates" icon="file-lines" href="/guides/email-templates">
+    Use templates with attachments
+  </Card>
+  
+  <Card title="Batch Emails" icon="envelopes-bulk" href="/guides/batch-emails">
+    Send emails with attachments in bulk
+  </Card>
+  
+  <Card title="Scheduled Emails" icon="clock" href="/guides/scheduled-emails">
+    Schedule emails with attachments
+  </Card>
+</CardGroup>

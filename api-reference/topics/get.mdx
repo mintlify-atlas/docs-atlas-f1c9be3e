@@ -1,0 +1,53 @@
+---
+title: Get Topic
+description: Retrieve a topic by ID.
+---
+
+## Method
+
+```go
+func (s *TopicsSvcImpl) Get(topicId string) (*Topic, error)
+func (s *TopicsSvcImpl) GetWithContext(ctx context.Context, topicId string) (*Topic, error)
+```
+
+## Parameters
+
+<ParamField path="topicId" type="string" required>
+  The unique identifier of the topic to retrieve
+</ParamField>
+
+## Response
+
+<ResponseField name="Id" type="string">
+  The unique identifier of the topic
+</ResponseField>
+
+<ResponseField name="Name" type="string">
+  The name of the topic
+</ResponseField>
+
+<ResponseField name="Description" type="string">
+  The description of the topic
+</ResponseField>
+
+<ResponseField name="DefaultSubscription" type="DefaultSubscription">
+  Default subscription preference. Either `"opt_in"` or `"opt_out"`
+</ResponseField>
+
+<ResponseField name="CreatedAt" type="string">
+  ISO 8601 timestamp of when the topic was created
+</ResponseField>
+
+## Example
+
+```go
+client := resend.NewClient("re_123456789")
+
+topic, err := client.Topics.Get("topic_abc123")
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Topic Name:", topic.Name)
+fmt.Println("Created At:", topic.CreatedAt)
+```

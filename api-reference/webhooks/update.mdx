@@ -1,0 +1,65 @@
+---
+title: Update Webhook
+description: Update a webhook's endpoint, events, or status.
+---
+
+## Method
+
+```go
+func (s *WebhooksSvcImpl) Update(webhookId string, params *UpdateWebhookRequest) (*UpdateWebhookResponse, error)
+func (s *WebhooksSvcImpl) UpdateWithContext(ctx context.Context, webhookId string, params *UpdateWebhookRequest) (*UpdateWebhookResponse, error)
+```
+
+## Parameters
+
+<ParamField path="webhookId" type="string" required>
+  The unique identifier of the webhook to update
+</ParamField>
+
+<ParamField path="params" type="*UpdateWebhookRequest" required>
+  The webhook update parameters
+  
+  <ParamField path="Endpoint" type="*string">
+    The new URL endpoint for the webhook
+  </ParamField>
+  
+  <ParamField path="Events" type="[]string">
+    Updated array of event types to subscribe to
+  </ParamField>
+  
+  <ParamField path="Status" type="*string">
+    The new status for the webhook
+  </ParamField>
+</ParamField>
+
+## Response
+
+<ResponseField name="Object" type="string">
+  Always `"webhook"`
+</ResponseField>
+
+<ResponseField name="Id" type="string">
+  The unique identifier of the updated webhook
+</ResponseField>
+
+## Example
+
+```go
+client := resend.NewClient("re_123456789")
+
+newEndpoint := "https://example.com/webhooks/new-endpoint"
+params := &resend.UpdateWebhookRequest{
+    Endpoint: &newEndpoint,
+    Events: []string{
+        resend.EventEmailSent,
+        resend.EventEmailDelivered,
+    },
+}
+
+response, err := client.Webhooks.Update("wh_abc123", params)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Updated webhook:", response.Id)
+```

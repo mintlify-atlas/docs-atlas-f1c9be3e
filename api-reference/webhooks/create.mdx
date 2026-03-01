@@ -1,0 +1,77 @@
+---
+title: Create Webhook
+description: Create a new webhook endpoint to receive event notifications.
+---
+
+## Method
+
+```go
+func (s *WebhooksSvcImpl) Create(params *CreateWebhookRequest) (*CreateWebhookResponse, error)
+func (s *WebhooksSvcImpl) CreateWithContext(ctx context.Context, params *CreateWebhookRequest) (*CreateWebhookResponse, error)
+```
+
+## Parameters
+
+<ParamField path="params" type="*CreateWebhookRequest" required>
+  The webhook creation parameters
+  
+  <ParamField path="Endpoint" type="string" required>
+    The URL endpoint that will receive webhook events
+  </ParamField>
+  
+  <ParamField path="Events" type="[]string" required>
+    Array of event types to subscribe to. Available events:
+    - `email.sent`
+    - `email.delivered`
+    - `email.delivery_delayed`
+    - `email.complained`
+    - `email.bounced`
+    - `email.opened`
+    - `email.clicked`
+    - `email.received`
+    - `email.failed`
+    - `contact.created`
+    - `contact.updated`
+    - `contact.deleted`
+    - `domain.created`
+    - `domain.updated`
+    - `domain.deleted`
+  </ParamField>
+</ParamField>
+
+## Response
+
+<ResponseField name="Object" type="string">
+  Always `"webhook"`
+</ResponseField>
+
+<ResponseField name="Id" type="string">
+  The unique identifier of the created webhook
+</ResponseField>
+
+<ResponseField name="SigningSecret" type="string">
+  The signing secret for verifying webhook payloads. Store this securely - it's only shown once.
+</ResponseField>
+
+## Example
+
+```go
+client := resend.NewClient("re_123456789")
+
+params := &resend.CreateWebhookRequest{
+    Endpoint: "https://example.com/webhooks/resend",
+    Events: []string{
+        resend.EventEmailSent,
+        resend.EventEmailDelivered,
+        resend.EventEmailBounced,
+    },
+}
+
+webhook, err := client.Webhooks.Create(params)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Webhook ID:", webhook.Id)
+fmt.Println("Signing Secret:", webhook.SigningSecret)
+```

@@ -1,0 +1,492 @@
+---
+title: Segments
+description: Learn how to organize contacts into segments for targeted email campaigns with the Resend Go SDK
+---
+
+Segments allow you to organize contacts into groups for targeted email campaigns. This guide covers creating, managing, and using segments with the Resend Go SDK.
+
+## Overview
+
+Segments (formerly called "audiences") provide a way to organize your global contacts into logical groups for broadcast campaigns. Unlike the legacy audience system, segments work with global contacts and support more flexible organization.
+
+<Note>
+  **Terminology Update:** Resend has renamed "audiences" to "segments". The API still accepts `audience_id` for backward compatibility, but new integrations should use `segment_id`.
+</Note>
+
+## Creating a Segment
+
+Create a new segment to organize your contacts.
+
+<CodeGroup>
+```go Basic Segment
+import (
+    "github.com/resend/resend-go/v3"
+)
+
+client := resend.NewClient("re_123456789")
+
+params := &resend.CreateSegmentRequest{
+    Name: "Premium Users",
+}
+
+segment, err := client.Segments.Create(params)
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Created segment: %s (ID: %s)\n", segment.Name, segment.Id)
+```
+
+```go With Context
+import "context"
+
+ctx := context.Background()
+
+params := &resend.CreateSegmentRequest{
+    Name: "Product Announcement List",
+}
+
+segment, err := client.Segments.CreateWithContext(ctx, params)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Segment ID:", segment.Id)
+fmt.Println("Object:", segment.Object)
+```
+</CodeGroup>
+
+<ParamField path="Name" type="string" required>
+  The name of the segment. This will be visible in your Resend dashboard.
+</ParamField>
+
+## Retrieving a Segment
+
+Get details about a specific segment.
+
+```go Get Segment
+segment, err := client.Segments.Get("seg-123456")
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Segment Name:", segment.Name)
+fmt.Println("Created At:", segment.CreatedAt)
+fmt.Println("ID:", segment.Id)
+```
+
+## Listing Segments
+
+Retrieve all segments in your account with optional pagination.
+
+<CodeGroup>
+```go List All Segments
+segments, err := client.Segments.List()
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("You have %d segment(s)\n", len(segments.Data))
+
+for _, segment := range segments.Data {
+    fmt.Printf("- %s (ID: %s)\n", segment.Name, segment.Id)
+}
+```
+
+```go With Pagination
+import "context"
+
+limit := 20
+options := &resend.ListOptions{
+    Limit: &limit,
+}
+
+segments, err := client.Segments.ListWithOptions(context.Background(), options)
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Retrieved %d segments\n", len(segments.Data))
+fmt.Printf("Has more: %v\n", segments.HasMore)
+```
+</CodeGroup>
+
+## Deleting a Segment
+
+Remove a segment from your account.
+
+```go Remove Segment
+removed, err := client.Segments.Remove("seg-123456")
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Segment %s deleted: %v\n", removed.Id, removed.Deleted)
+```
+
+<Warning>
+  Deleting a segment does not delete the contacts within it. Contacts remain in your account as global contacts.
+</Warning>
+
+## Managing Contacts in Segments
+
+Segments are populated and managed through the Contacts API's nested Segments service.
+
+### Adding Contacts to Segments
+
+Add a contact to a segment using the `Contacts.Segments.Add` method.
+
+```go Add Contact to Segment
+// First, create a global contact
+contactParams := &resend.CreateContactRequest{
+    Email:     "user@example.com",
+    FirstName: "John",
+    LastName:  "Doe",
+}
+
+contact, err := client.Contacts.Create(contactParams)
+if err != nil {
+    panic(err)
+}
+
+// Then add the contact to a segment
+addParams := &resend.AddContactSegmentRequest{
+    ContactId: contact.Id,
+    SegmentId: "seg-123456",
+}
+
+_, err = client.Contacts.Segments.Add(addParams)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Contact added to segment")
+```
+
+### Listing Contact's Segments
+
+Retrieve all segments a contact belongs to.
+
+```go List Contact Segments
+listParams := &resend.ListContactSegmentsRequest{
+    ContactId: "contact-123",
+}
+
+segments, err := client.Contacts.Segments.List(listParams)
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Contact is in %d segment(s):\n", len(segments.Data))
+for _, seg := range segments.Data {
+    fmt.Printf("  - %s (ID: %s)\n", seg.Name, seg.Id)
+}
+```
+
+### Removing Contacts from Segments
+
+Remove a contact from a specific segment.
+
+```go Remove Contact from Segment
+removeParams := &resend.RemoveContactSegmentRequest{
+    ContactId: "contact-123",
+    SegmentId: "seg-123456",
+}
+
+removed, err := client.Contacts.Segments.Remove(removeParams)
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Removed from segment: %v\n", removed.Deleted)
+```
+
+## Relationship to Contacts
+
+Segments work exclusively with global contacts (contacts created without an `audience_id`). Here's the recommended workflow:
+
+<Steps>
+  <Step title="Create Global Contacts">
+    Create contacts without specifying an `audience_id`:
+    
+    ```go
+    contact, err := client.Contacts.Create(&resend.CreateContactRequest{
+        Email:     "user@example.com",
+        FirstName: "John",
+        LastName:  "Doe",
+    })
+    ```
+  </Step>
+  
+  <Step title="Create Segments">
+    Create segments to organize contacts:
+    
+    ```go
+    segment, err := client.Segments.Create(&resend.CreateSegmentRequest{
+        Name: "Premium Users",
+    })
+    ```
+  </Step>
+  
+  <Step title="Add Contacts to Segments">
+    Associate contacts with segments:
+    
+    ```go
+    _, err := client.Contacts.Segments.Add(&resend.AddContactSegmentRequest{
+        ContactId: contact.Id,
+        SegmentId: segment.Id,
+    })
+    ```
+  </Step>
+  
+  <Step title="Send Broadcasts">
+    Send email campaigns to entire segments:
+    
+    ```go
+    broadcast, err := client.Broadcasts.Create(&resend.CreateBroadcastRequest{
+        SegmentId: segment.Id,
+        From:      "noreply@example.com",
+        Subject:   "Product Update",
+        Html:      "<h1>Hello!</h1>",
+    })
+    ```
+  </Step>
+</Steps>
+
+## Complete Example
+
+Here's a complete workflow demonstrating segment management:
+
+```go Complete Segment Workflow
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+    
+    "github.com/resend/resend-go/v3"
+)
+
+func main() {
+    ctx := context.Background()
+    apiKey := os.Getenv("RESEND_API_KEY")
+    client := resend.NewClient(apiKey)
+
+    // 1. Create a segment
+    segmentParams := &resend.CreateSegmentRequest{
+        Name: "Premium Users",
+    }
+
+    segment, err := client.Segments.CreateWithContext(ctx, segmentParams)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("Created segment: %s (ID: %s)\n", segment.Name, segment.Id)
+
+    // 2. Create a global contact
+    contactParams := &resend.CreateContactRequest{
+        Email:     "premium.user@example.com",
+        FirstName: "Premium",
+        LastName:  "User",
+    }
+
+    contact, err := client.Contacts.CreateWithContext(ctx, contactParams)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("Created contact: %s\n", contact.Id)
+
+    // 3. Add the contact to the segment
+    addToSegment := &resend.AddContactSegmentRequest{
+        ContactId: contact.Id,
+        SegmentId: segment.Id,
+    }
+
+    _, err = client.Contacts.Segments.AddWithContext(ctx, addToSegment)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println("Added contact to segment")
+
+    // 4. List all segments for this contact
+    contactSegments, err := client.Contacts.Segments.ListWithContext(ctx, &resend.ListContactSegmentsRequest{
+        ContactId: contact.Id,
+    })
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("\nContact is in %d segment(s):\n", len(contactSegments.Data))
+    for _, seg := range contactSegments.Data {
+        fmt.Printf("  - %s (ID: %s)\n", seg.Name, seg.Id)
+    }
+
+    // 5. Get segment details
+    retrievedSegment, err := client.Segments.GetWithContext(ctx, segment.Id)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("\nRetrieved segment: %s\n", retrievedSegment.Name)
+
+    // 6. List all segments
+    segments, err := client.Segments.ListWithContext(ctx)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("You have %d segments in your project\n", len(segments.Data))
+
+    // 7. Clean up: Remove the contact from the segment
+    removeFromSegment, err := client.Contacts.Segments.RemoveWithContext(ctx, &resend.RemoveContactSegmentRequest{
+        ContactId: contact.Id,
+        SegmentId: segment.Id,
+    })
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("\nRemoved contact from segment: %v\n", removeFromSegment.Deleted)
+
+    // 8. Clean up: Remove the contact
+    removedContact, err := client.Contacts.RemoveWithContext(ctx, &resend.RemoveContactOptions{
+        Id: contact.Id,
+    })
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("Deleted contact: %v\n", removedContact.Deleted)
+
+    // 9. Clean up: Remove the segment
+    removedSegment, err := client.Segments.RemoveWithContext(ctx, segment.Id)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("Deleted segment: %v\n", removedSegment.Deleted)
+}
+```
+
+## Using Segments with Broadcasts
+
+Segments are primarily used to send broadcast email campaigns to groups of contacts.
+
+```go Send Broadcast to Segment
+// Create a broadcast for a segment
+broadcastParams := &resend.CreateBroadcastRequest{
+    SegmentId: "seg-123456",
+    From:      "updates@example.com",
+    Subject:   "Monthly Newsletter",
+    Html:      "<h1>This month's updates</h1><p>Content here...</p>",
+    Name:      "Monthly Newsletter - January",
+}
+
+broadcast, err := client.Broadcasts.Create(broadcastParams)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Created broadcast:", broadcast.Id)
+
+// Send the broadcast to all contacts in the segment
+sendParams := &resend.SendBroadcastRequest{
+    BroadcastId: broadcast.Id,
+}
+
+sent, err := client.Broadcasts.Send(sendParams)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Broadcast sent to segment")
+```
+
+<Tip>
+  See the [Broadcasts guide](/guides/broadcasts) for more details on sending email campaigns to segments.
+</Tip>
+
+## Migration from Audiences
+
+If you're migrating from the legacy audiences system:
+
+<Accordion title="Audiences vs Segments">
+  **Old Approach (Audiences):**
+  ```go
+  // Create audience-specific contact
+  contact, err := client.Contacts.Create(&resend.CreateContactRequest{
+      Email:      "user@example.com",
+      AudienceId: "aud-123", // Tied to specific audience
+  })
+  
+  // Send broadcast
+  broadcast, err := client.Broadcasts.Create(&resend.CreateBroadcastRequest{
+      AudienceId: "aud-123",
+      From:       "noreply@example.com",
+      Subject:    "Update",
+      Html:       "<h1>Hello</h1>",
+  })
+  ```
+  
+  **New Approach (Segments):**
+  ```go
+  // Create global contact
+  contact, err := client.Contacts.Create(&resend.CreateContactRequest{
+      Email: "user@example.com",
+      // No AudienceId - contact is global
+  })
+  
+  // Add to segment
+  _, err = client.Contacts.Segments.Add(&resend.AddContactSegmentRequest{
+      ContactId: contact.Id,
+      SegmentId: "seg-123",
+  })
+  
+  // Send broadcast
+  broadcast, err := client.Broadcasts.Create(&resend.CreateBroadcastRequest{
+      SegmentId: "seg-123", // Use SegmentId instead
+      From:      "noreply@example.com",
+      Subject:   "Update",
+      Html:      "<h1>Hello</h1>",
+  })
+  ```
+</Accordion>
+
+<Note>
+  The API still accepts `audience_id` for backward compatibility, but new code should use `segment_id`.
+</Note>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Descriptive Names" icon="tag">
+    Give segments clear, descriptive names that indicate their purpose (e.g., "Premium Users", "Newsletter Subscribers").
+  </Card>
+  
+  <Card title="Combine with Properties" icon="filter">
+    Use contact properties along with segments for advanced targeting and personalization.
+  </Card>
+  
+  <Card title="Keep Segments Organized" icon="layer-group">
+    Regularly review and clean up unused segments to maintain organization.
+  </Card>
+  
+  <Card title="Test Before Broadcasting" icon="flask">
+    Test broadcast campaigns on a small segment before sending to larger audiences.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Contacts" icon="user" href="/guides/contacts">
+    Learn how to manage contacts
+  </Card>
+  
+  <Card title="Broadcasts" icon="broadcast-tower" href="/guides/broadcasts">
+    Send email campaigns to segments
+  </Card>
+  
+  <Card title="Segments Example" icon="code" href="https://github.com/resend/resend-go/blob/main/examples/segments.go">
+    View the complete segments example
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="https://resend.com/docs/api-reference/segments">
+    View the complete Segments API reference
+  </Card>
+</CardGroup>

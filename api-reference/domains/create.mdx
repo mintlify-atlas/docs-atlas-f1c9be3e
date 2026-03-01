@@ -1,0 +1,146 @@
+---
+title: Create Domain
+description: Create a new domain to send emails from
+---
+
+## Methods
+
+### Create
+
+```go
+func (s *DomainsSvcImpl) Create(params *CreateDomainRequest) (CreateDomainResponse, error)
+```
+
+Creates a new domain entry.
+
+### CreateWithContext
+
+```go
+func (s *DomainsSvcImpl) CreateWithContext(ctx context.Context, params *CreateDomainRequest) (CreateDomainResponse, error)
+```
+
+Creates a new domain entry with context support.
+
+## Request Parameters
+
+### CreateDomainRequest
+
+<ParamField body="name" type="string" required>
+  The domain name to add (e.g., "example.com")
+</ParamField>
+
+<ParamField body="region" type="string">
+  The region where emails will be sent from. Options: `us-east-1`, `eu-west-1`, `sa-east-1`
+</ParamField>
+
+<ParamField body="custom_return_path" type="string">
+  Custom return path for the domain
+</ParamField>
+
+## Response
+
+### CreateDomainResponse
+
+<ResponseField name="id" type="string">
+  The unique identifier for the domain
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The domain name
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Timestamp when the domain was created
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  The verification status of the domain
+</ResponseField>
+
+<ResponseField name="records" type="[]Record">
+  DNS records required for domain verification. See [Record](#record) structure below.
+</ResponseField>
+
+<ResponseField name="region" type="string">
+  The region where emails will be sent from
+</ResponseField>
+
+<ResponseField name="dns_provider" type="string">
+  The DNS provider for the domain
+</ResponseField>
+
+### Record
+
+<ResponseField name="record" type="string">
+  The record identifier
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The DNS record name
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  The DNS record type (e.g., "TXT", "MX", "CNAME")
+</ResponseField>
+
+<ResponseField name="ttl" type="string">
+  Time to live for the DNS record
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Verification status of this specific record
+</ResponseField>
+
+<ResponseField name="value" type="string">
+  The value to set for the DNS record
+</ResponseField>
+
+<ResponseField name="priority" type="json.Number">
+  Priority value for MX records (optional)
+</ResponseField>
+
+## Example
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    params := &resend.CreateDomainRequest{
+        Name:   "example.com",
+        Region: "us-east-1",
+    }
+
+    domain, err := client.Domains.Create(params)
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("Domain ID:", domain.Id)
+    fmt.Println("Status:", domain.Status)
+    
+    for _, record := range domain.Records {
+        fmt.Printf("Add %s record: %s = %s\n", record.Type, record.Name, record.Value)
+    }
+}
+```
+
+## Example with Context
+
+```go
+ctx := context.Background()
+
+params := &resend.CreateDomainRequest{
+    Name:             "example.com",
+    Region:           "us-east-1",
+    CustomReturnPath: "bounces.example.com",
+}
+
+domain, err := client.Domains.CreateWithContext(ctx, params)
+```

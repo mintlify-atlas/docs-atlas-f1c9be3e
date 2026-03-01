@@ -1,80 +1,281 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Send your first email with the Resend Go SDK
 ---
 
-## Get started in three steps
+Get up and running with the Resend Go SDK in minutes. This guide walks you through sending your first email.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+Before you begin, make sure you have:
+
+- Go 1.23 or later installed
+- The Resend Go SDK installed (see [Installation](/installation))
+- A Resend API key (get one from the [Resend Dashboard](https://resend.com/api-keys))
+
+## Send your first email
+
+<Steps>
+  <Step title="Get your API key">
+    Sign in to your Resend account and navigate to the [API Keys](https://resend.com/api-keys) page. Create a new API key or copy an existing one.
+
+    <Warning>
+      Keep your API key secure and never commit it to version control. Use environment variables to store sensitive credentials.
+    </Warning>
+
+    Store your API key in an environment variable:
+
+    ```bash
+    export RESEND_API_KEY="re_your_api_key_here"
+    ```
+  </Step>
+
+  <Step title="Create a new Go file">
+    Create a new file called `main.go` with the following code:
+
+    ```go
+    package main
+
+    import (
+        "context"
+        "fmt"
+        "os"
+
+        "github.com/resend/resend-go/v3"
+    )
+
+    func main() {
+        ctx := context.TODO()
+        apiKey := os.Getenv("RESEND_API_KEY")
+
+        client := resend.NewClient(apiKey)
+
+        params := &resend.SendEmailRequest{
+            To:      []string{"delivered@resend.dev"},
+            From:    "onboarding@resend.dev",
+            Text:    "hello world",
+            Subject: "Hello from Golang",
+            Cc:      []string{"cc@example.com"},
+            Bcc:     []string{"bcc@example.com"},
+            ReplyTo: "to@example.com",
+        }
+
+        sent, err := client.Emails.SendWithContext(ctx, params)
+        if err != nil {
+            panic(err)
+        }
+        fmt.Printf("Sent basic email: %s\n", sent.Id)
+    }
+    ```
+
+    <Note>
+      The example uses `delivered@resend.dev` as the recipient, which is a test email that Resend provides. Replace it with your actual recipient email address.
+    </Note>
+  </Step>
+
+  <Step title="Run your code">
+    Execute your program:
+
+    ```bash
+    go run main.go
+    ```
+
+    You should see output similar to:
+
+    ```
+    Sent basic email: 4ef2ecd5-9de0-4b8f-a4e5-1c062f3e7a6c
+    ```
+
+    The returned ID is your email's unique identifier that you can use to track delivery status.
+  </Step>
+
+  <Step title="Verify email delivery">
+    Check the recipient's inbox to confirm the email was delivered. You can also view the email in your [Resend Dashboard](https://resend.com/emails).
+  </Step>
+</Steps>
+
+## Send HTML emails
+
+Enhance your emails with HTML content:
+
+```go
+params := &resend.SendEmailRequest{
+    To:      []string{"delivered@resend.dev"},
+    From:    "onboarding@resend.dev",
+    Html:    "<strong>hello world</strong>",
+    Subject: "Hello from Golang",
+}
+
+sent, err := client.Emails.Send(params)
+if err != nil {
+    panic(err)
+}
+fmt.Println(sent.Id)
+```
+
+<Note>
+  You can specify both `Html` and `Text` fields. The `Text` field serves as a fallback for email clients that don't support HTML.
+</Note>
+
+## Use idempotency keys
+
+Prevent duplicate emails by using idempotency keys. This is useful when you want to ensure an email is only sent once, even if your code retries the request:
+
+```go
+ctx := context.TODO()
+
+params := &resend.SendEmailRequest{
+    To:      []string{"delivered@resend.dev"},
+    From:    "onboarding@resend.dev",
+    Text:    "hello world",
+    Subject: "Hello from Golang",
+}
+
+options := &resend.SendEmailOptions{
+    IdempotencyKey: "unique-idempotency-key",
+}
+
+sent, err := client.Emails.SendWithOptions(ctx, params, options)
+if err != nil {
+    panic(err)
+}
+fmt.Printf("Sent email with idempotency key: %s\n", sent.Id)
+```
+
+If you send the same request with the same idempotency key, Resend will return the original email ID instead of sending a duplicate.
+
+## Send with attachments
+
+Attach files to your emails using either local file content or remote URLs:
+
+```go
+import (
+    "os"
+    "github.com/resend/resend-go/v3"
+)
+
+func main() {
+    ctx := context.TODO()
+    apiKey := os.Getenv("RESEND_API_KEY")
+    client := resend.NewClient(apiKey)
+
+    // Read local file
+    fileContent, err := os.ReadFile("invoice.pdf")
+    if err != nil {
+        panic(err)
+    }
+
+    // Create attachments
+    localAttachment := &resend.Attachment{
+        Content:     fileContent,
+        Filename:    "invoice.pdf",
+        ContentType: "application/pdf",
+    }
+
+    remoteAttachment := &resend.Attachment{
+        Path:        "https://example.com/document.pdf",
+        Filename:    "document.pdf",
+        ContentType: "application/pdf",
+    }
+
+    params := &resend.SendEmailRequest{
+        To:          []string{"delivered@resend.dev"},
+        From:        "onboarding@resend.dev",
+        Subject:     "Invoice attached",
+        Html:        "<p>Please find your invoice attached.</p>",
+        Attachments: []*resend.Attachment{localAttachment, remoteAttachment},
+    }
+
+    sent, err := client.Emails.SendWithContext(ctx, params)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println("Sent email with attachments:", sent.Id)
+}
+```
+
+## Send batch emails
+
+Send multiple emails in a single API call for better performance:
+
+```go
+ctx := context.TODO()
+apiKey := os.Getenv("RESEND_API_KEY")
+client := resend.NewClient(apiKey)
+
+batchEmails := []*resend.SendEmailRequest{
+    {
+        To:      []string{"user1@example.com"},
+        From:    "onboarding@resend.dev",
+        Text:    "Welcome to our service!",
+        Subject: "Welcome",
+    },
+    {
+        To:      []string{"user2@example.com"},
+        From:    "onboarding@resend.dev",
+        Text:    "Your order has shipped!",
+        Subject: "Order Update",
+    },
+}
+
+sent, err := client.Batch.SendWithContext(ctx, batchEmails)
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Sent %d emails\n", len(sent.Data))
+for _, email := range sent.Data {
+    fmt.Printf("  - %s\n", email.Id)
+}
+```
+
+<Note>
+  Batch sending supports both strict validation (default) where all emails must be valid, or permissive mode where valid emails are sent even if some fail validation.
+</Note>
+
+## Common errors and solutions
 
 <AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
+  <Accordion title="Authentication failed">
+    **Error:** `401 Unauthorized`
+
+    **Solution:** Verify that your API key is correct and properly set in the environment variable. Make sure you're using a valid API key from your [Resend Dashboard](https://resend.com/api-keys).
   </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
+
+  <Accordion title="Invalid from address">
+    **Error:** `422 Unprocessable Entity - Invalid from address`
+
+    **Solution:** The `From` field must use a domain you've verified in Resend. You can use `onboarding@resend.dev` for testing, or add and verify your own domain in the [Domains](https://resend.com/domains) section.
   </Accordion>
-</AccordionGroup>
 
-### Step 2: Deploy your changes
+  <Accordion title="Rate limit exceeded">
+    **Error:** `429 Too Many Requests`
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    **Solution:** You've exceeded your rate limit. The SDK provides rate limit information in the error response. Wait for the specified retry-after period before sending more emails, or upgrade your plan for higher limits.
+  </Accordion>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+  <Accordion title="Context timeout">
+    **Error:** `context deadline exceeded`
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
+    **Solution:** The request took too long to complete. The default HTTP client has a 1-minute timeout. You can create a custom HTTP client with a longer timeout if needed, or check your network connection.
   </Accordion>
 </AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
+Now that you've sent your first email, explore more advanced features:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Email templates" icon="file-lines" href="https://github.com/resend/resend-go/blob/main/examples/send_email_with_template.go">
+    Create reusable email templates with variables
+  </Card>
+  <Card title="Schedule emails" icon="clock" href="https://github.com/resend/resend-go/blob/main/examples/schedule_email.go">
+    Schedule emails for future delivery
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="https://github.com/resend/resend-go/blob/main/examples/webhooks.go">
+    Receive real-time email event notifications
+  </Card>
+  <Card title="Manage contacts" icon="users" href="https://github.com/resend/resend-go/blob/main/examples/contacts.go">
+    Organize contacts into audiences and segments
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

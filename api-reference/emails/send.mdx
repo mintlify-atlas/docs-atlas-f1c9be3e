@@ -1,0 +1,281 @@
+---
+title: 'Send Email'
+description: 'Send an email using the Resend Go SDK'
+---
+
+## Send
+
+Sends an email with the given parameters.
+
+```go
+func (s *EmailsSvcImpl) Send(params *SendEmailRequest) (*SendEmailResponse, error)
+```
+
+### Parameters
+
+<ParamField path="params" type="*SendEmailRequest" required>
+  The email parameters
+  
+  <Expandable title="SendEmailRequest fields">
+    <ParamField path="From" type="string" required>
+      Sender email address. Must be from a verified domain.
+    </ParamField>
+    
+    <ParamField path="To" type="[]string" required>
+      Recipient email addresses.
+    </ParamField>
+    
+    <ParamField path="Subject" type="string" required>
+      Email subject line.
+    </ParamField>
+    
+    <ParamField path="Html" type="string">
+      HTML version of the message.
+    </ParamField>
+    
+    <ParamField path="Text" type="string">
+      Plain text version of the message.
+    </ParamField>
+    
+    <ParamField path="Bcc" type="[]string">
+      Blind carbon copy recipients.
+    </ParamField>
+    
+    <ParamField path="Cc" type="[]string">
+      Carbon copy recipients.
+    </ParamField>
+    
+    <ParamField path="ReplyTo" type="string">
+      Reply-to email address.
+    </ParamField>
+    
+    <ParamField path="Tags" type="[]Tag">
+      Custom metadata tags for the email.
+      
+      <Expandable title="Tag fields">
+        <ParamField path="Name" type="string" required>
+          Tag name.
+        </ParamField>
+        
+        <ParamField path="Value" type="string" required>
+          Tag value.
+        </ParamField>
+      </Expandable>
+    </ParamField>
+    
+    <ParamField path="Attachments" type="[]*Attachment">
+      File attachments for the email.
+      
+      <Expandable title="Attachment fields">
+        <ParamField path="Content" type="[]byte">
+          Binary content of the attachment. Use when Path is not available.
+        </ParamField>
+        
+        <ParamField path="Filename" type="string" required>
+          Filename that will appear in the email. Pick the correct extension for proper preview.
+        </ParamField>
+        
+        <ParamField path="Path" type="string">
+          URL path where the attachment file is hosted instead of providing content directly.
+        </ParamField>
+        
+        <ParamField path="ContentType" type="string">
+          Content type for the attachment. If not set, derived from the filename.
+        </ParamField>
+        
+        <ParamField path="ContentId" type="string">
+          Optional content ID for inline attachments. Reference in HTML using `cid:` prefix.
+        </ParamField>
+      </Expandable>
+    </ParamField>
+    
+    <ParamField path="Headers" type="map[string]string">
+      Custom email headers.
+    </ParamField>
+    
+    <ParamField path="ScheduledAt" type="string">
+      Schedule email for future delivery. Format: ISO 8601 (e.g., "2024-09-05T11:52:01.858Z").
+    </ParamField>
+    
+    <ParamField path="Template" type="*EmailTemplate">
+      Template configuration for the email.
+      
+      <Expandable title="EmailTemplate fields">
+        <ParamField path="Id" type="string" required>
+          Template ID or alias to use for this email.
+        </ParamField>
+        
+        <ParamField path="Variables" type="map[string]any">
+          Key-value pairs to populate template placeholders.
+        </ParamField>
+      </Expandable>
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="response" type="*SendEmailResponse">
+  <Expandable title="SendEmailResponse fields">
+    <ResponseField name="Id" type="string">
+      The unique identifier of the sent email.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	client := resend.NewClient("re_123456789")
+
+	params := &resend.SendEmailRequest{
+		From:    "onboarding@resend.dev",
+		To:      []string{"delivered@resend.dev"},
+		Subject: "Hello from Golang",
+		Text:    "hello world",
+		Cc:      []string{"cc@example.com"},
+		Bcc:     []string{"bcc@example.com"},
+		ReplyTo: "to@example.com",
+	}
+
+	sent, err := client.Emails.Send(params)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Email sent: %s\n", sent.Id)
+}
+```
+
+---
+
+## SendWithContext
+
+Sends an email with the given parameters and context.
+
+```go
+func (s *EmailsSvcImpl) SendWithContext(ctx context.Context, params *SendEmailRequest) (*SendEmailResponse, error)
+```
+
+### Parameters
+
+<ParamField path="ctx" type="context.Context" required>
+  Context for the request.
+</ParamField>
+
+<ParamField path="params" type="*SendEmailRequest" required>
+  The email parameters. See [Send](#send) for field details.
+</ParamField>
+
+### Returns
+
+<ResponseField name="response" type="*SendEmailResponse">
+  See [Send](#send) for response details.
+</ResponseField>
+
+### Example
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	ctx := context.Background()
+	client := resend.NewClient("re_123456789")
+
+	params := &resend.SendEmailRequest{
+		From:    "onboarding@resend.dev",
+		To:      []string{"delivered@resend.dev"},
+		Subject: "Hello from Golang",
+		Text:    "hello world",
+	}
+
+	sent, err := client.Emails.SendWithContext(ctx, params)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Email sent: %s\n", sent.Id)
+}
+```
+
+---
+
+## SendWithOptions
+
+Sends an email with the given parameters, context, and additional options.
+
+```go
+func (s *EmailsSvcImpl) SendWithOptions(ctx context.Context, params *SendEmailRequest, options *SendEmailOptions) (*SendEmailResponse, error)
+```
+
+### Parameters
+
+<ParamField path="ctx" type="context.Context" required>
+  Context for the request.
+</ParamField>
+
+<ParamField path="params" type="*SendEmailRequest" required>
+  The email parameters. See [Send](#send) for field details.
+</ParamField>
+
+<ParamField path="options" type="*SendEmailOptions" required>
+  Additional options for sending the email.
+  
+  <Expandable title="SendEmailOptions fields">
+    <ParamField path="IdempotencyKey" type="string">
+      Unique key to ensure idempotent email sending. Prevents duplicate sends.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="response" type="*SendEmailResponse">
+  See [Send](#send) for response details.
+</ResponseField>
+
+### Example
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	ctx := context.Background()
+	client := resend.NewClient("re_123456789")
+
+	params := &resend.SendEmailRequest{
+		From:    "onboarding@resend.dev",
+		To:      []string{"delivered@resend.dev"},
+		Subject: "Hello from Golang",
+		Text:    "hello world",
+	}
+
+	options := &resend.SendEmailOptions{
+		IdempotencyKey: "unique-idempotency-key",
+	}
+
+	sent, err := client.Emails.SendWithOptions(ctx, params, options)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Email sent: %s\n", sent.Id)
+}
+```

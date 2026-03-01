@@ -1,0 +1,152 @@
+---
+title: Get Contact
+description: Retrieve a specific contact by ID or email address
+---
+
+## Methods
+
+### Get
+
+```go
+func (s *ContactsSvcImpl) Get(options *GetContactOptions) (Contact, error)
+```
+
+Retrieves a contact by ID or email address.
+
+### GetWithContext
+
+```go
+func (s *ContactsSvcImpl) GetWithContext(ctx context.Context, options *GetContactOptions) (Contact, error)
+```
+
+Retrieves a contact by ID or email address with context support.
+
+## Parameters
+
+### GetContactOptions
+
+<ParamField body="audience_id" type="string">
+  Optional - Omit for global contacts. Include to retrieve an audience-specific contact.
+</ParamField>
+
+<ParamField body="id" type="string" required>
+  The contact ID or email address to retrieve
+</ParamField>
+
+## Response
+
+### Contact
+
+<ResponseField name="id" type="string">
+  The unique identifier for the contact
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  The contact's email address
+</ResponseField>
+
+<ResponseField name="object" type="string">
+  Object type ("contact")
+</ResponseField>
+
+<ResponseField name="first_name" type="string">
+  The contact's first name
+</ResponseField>
+
+<ResponseField name="last_name" type="string">
+  The contact's last name
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Timestamp when the contact was created
+</ResponseField>
+
+<ResponseField name="unsubscribed" type="bool">
+  Whether the contact has unsubscribed from emails
+</ResponseField>
+
+<ResponseField name="properties" type="map[string]any">
+  Custom properties for global contacts. Currently, the API only returns string values.
+</ResponseField>
+
+## Examples
+
+### Get Global Contact by ID
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    options := &resend.GetContactOptions{
+        Id: "c1a2b3c4-d5e6-7f8g-9h0i-1j2k3l4m5n6o",
+    }
+
+    contact, err := client.Contacts.Get(options)
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("Email:", contact.Email)
+    fmt.Println("Name:", contact.FirstName, contact.LastName)
+    fmt.Println("Unsubscribed:", contact.Unsubscribed)
+}
+```
+
+### Get Global Contact by Email
+
+```go
+options := &resend.GetContactOptions{
+    Id: "user@example.com",
+}
+
+contact, err := client.Contacts.Get(options)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Contact ID:", contact.Id)
+fmt.Println("Created:", contact.CreatedAt)
+```
+
+### Get Audience Contact
+
+```go
+options := &resend.GetContactOptions{
+    AudienceId: "aud_123456",
+    Id:         "user@example.com",
+}
+
+contact, err := client.Contacts.Get(options)
+```
+
+### With Context and Properties
+
+```go
+ctx := context.Background()
+
+options := &resend.GetContactOptions{
+    Id: "user@example.com",
+}
+
+contact, err := client.Contacts.GetWithContext(ctx, options)
+if err != nil {
+    panic(err)
+}
+
+if contact.Properties != nil {
+    fmt.Println("Properties:", contact.Properties)
+}
+```
+
+## Notes
+
+- The `Id` field accepts either a contact ID or email address
+- Omit `AudienceId` to retrieve global contacts
+- Include `AudienceId` to retrieve audience-specific contacts

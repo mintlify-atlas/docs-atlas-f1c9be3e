@@ -1,0 +1,155 @@
+---
+title: 'List broadcasts'
+description: 'Retrieve a list of all broadcasts.'
+---
+
+Retrieves a paginated list of all broadcasts.
+
+## Methods
+
+### List
+
+```go
+List() (ListBroadcastsResponse, error)
+```
+
+Lists all broadcasts using the default background context.
+
+### ListWithContext
+
+```go
+ListWithContext(ctx context.Context) (ListBroadcastsResponse, error)
+```
+
+Lists all broadcasts with a custom context for cancellation and timeout control.
+
+### ListWithOptions
+
+```go
+ListWithOptions(ctx context.Context, options *ListOptions) (ListBroadcastsResponse, error)
+```
+
+Lists broadcasts with pagination options.
+
+## Query Parameters
+
+When using `ListWithOptions`, you can pass a `ListOptions` struct with the following fields:
+
+<ParamField query="limit" type="number">
+  The maximum number of broadcasts to return per page.
+</ParamField>
+
+<ParamField query="offset" type="number">
+  The number of broadcasts to skip before starting to return results.
+</ParamField>
+
+## Response
+
+<ResponseField name="object" type="string">
+  The object type, always `list`.
+</ResponseField>
+
+<ResponseField name="data" type="Broadcast[]">
+  An array of broadcast objects.
+  <Expandable title="Broadcast properties">
+    <ResponseField name="object" type="string">
+      The object type, always `broadcast`.
+    </ResponseField>
+    <ResponseField name="id" type="string">
+      The unique identifier for the broadcast.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      The name of the broadcast.
+    </ResponseField>
+    <ResponseField name="segment_id" type="string">
+      The ID of the segment this broadcast is sent to.
+    </ResponseField>
+    <ResponseField name="from" type="string">
+      The sender email address.
+    </ResponseField>
+    <ResponseField name="subject" type="string">
+      The email subject line.
+    </ResponseField>
+    <ResponseField name="reply_to" type="string[]">
+      An array of reply-to email addresses.
+    </ResponseField>
+    <ResponseField name="html" type="string">
+      The HTML content of the email.
+    </ResponseField>
+    <ResponseField name="text" type="string">
+      The plain text content of the email.
+    </ResponseField>
+    <ResponseField name="preview_text" type="string">
+      The preview text that appears in email clients.
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      The current status of the broadcast.
+    </ResponseField>
+    <ResponseField name="created_at" type="string">
+      ISO 8601 timestamp of when the broadcast was created.
+    </ResponseField>
+    <ResponseField name="scheduled_at" type="string">
+      ISO 8601 timestamp of when the broadcast is scheduled to be sent.
+    </ResponseField>
+    <ResponseField name="sent_at" type="string">
+      ISO 8601 timestamp of when the broadcast was sent.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="has_more" type="boolean">
+  Indicates whether there are more broadcasts available beyond the current page.
+</ResponseField>
+
+## Example
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    broadcasts, err := client.Broadcasts.List()
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("Total broadcasts:", len(broadcasts.Data))
+    for _, broadcast := range broadcasts.Data {
+        fmt.Printf("%s: %s (Status: %s)\n", broadcast.Id, broadcast.Name, broadcast.Status)
+    }
+}
+```
+
+## Example with pagination
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    options := &resend.ListOptions{
+        Limit:  10,
+        Offset: 0,
+    }
+
+    broadcasts, err := client.Broadcasts.ListWithOptions(context.Background(), options)
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("Has more:", broadcasts.HasMore)
+}
+```

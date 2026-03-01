@@ -1,0 +1,94 @@
+---
+title: 'Duplicate Template'
+description: 'Create a copy of an existing template'
+---
+
+## Duplicate
+
+Duplicate a template by ID or alias using the default context.
+
+```go
+func (s *TemplatesSvcImpl) Duplicate(identifier string) (*DuplicateTemplateResponse, error)
+```
+
+### Parameters
+
+<ParamField path="identifier" type="string" required>
+  The template ID or alias to duplicate.
+</ParamField>
+
+### Returns
+
+Returns a `*DuplicateTemplateResponse` containing the new template ID.
+
+### Example
+
+```go
+response, err := client.Templates.Duplicate("template_id_or_alias")
+if err != nil {
+  panic(err)
+}
+
+fmt.Println("New template ID:", response.Id)
+```
+
+---
+
+## DuplicateWithContext
+
+Duplicate a template by ID or alias with a custom context.
+
+```go
+func (s *TemplatesSvcImpl) DuplicateWithContext(ctx context.Context, identifier string) (*DuplicateTemplateResponse, error)
+```
+
+### Parameters
+
+<ParamField path="ctx" type="context.Context" required>
+  Context for the request, useful for timeouts and cancellation.
+</ParamField>
+
+<ParamField path="identifier" type="string" required>
+  The template ID or alias to duplicate.
+</ParamField>
+
+### Returns
+
+Returns a `*DuplicateTemplateResponse` containing the new template ID.
+
+### Example
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+defer cancel()
+
+response, err := client.Templates.DuplicateWithContext(ctx, "welcome-email")
+if err != nil {
+  panic(err)
+}
+
+fmt.Println("Duplicated template:", response.Id)
+```
+
+---
+
+## Types
+
+### DuplicateTemplateResponse
+
+Response from duplicating a template.
+
+```go
+type DuplicateTemplateResponse struct {
+  Id     string `json:"id"`
+  Object string `json:"object"`
+}
+```
+
+<ResponseField name="Id" type="string">
+  The unique identifier of the newly created duplicate template.
+</ResponseField>
+
+<ResponseField name="Object" type="string">
+  The object type, always "template".
+</ResponseField>

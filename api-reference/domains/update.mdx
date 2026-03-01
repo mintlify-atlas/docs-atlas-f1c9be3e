@@ -1,0 +1,149 @@
+---
+title: Update Domain
+description: Update domain configuration settings
+---
+
+## Methods
+
+### Update
+
+```go
+func (s *DomainsSvcImpl) Update(domainId string, params *UpdateDomainRequest) (Domain, error)
+```
+
+Updates an existing domain's configuration.
+
+### UpdateWithContext
+
+```go
+func (s *DomainsSvcImpl) UpdateWithContext(ctx context.Context, domainId string, params *UpdateDomainRequest) (Domain, error)
+```
+
+Updates an existing domain's configuration with context support.
+
+## Parameters
+
+<ParamField path="domainId" type="string" required>
+  The unique identifier of the domain to update
+</ParamField>
+
+### UpdateDomainRequest
+
+<ParamField body="open_tracking" type="bool">
+  Enable or disable open tracking for emails sent from this domain
+</ParamField>
+
+<ParamField body="click_tracking" type="bool">
+  Enable or disable click tracking for emails sent from this domain
+</ParamField>
+
+<ParamField body="tls" type="TlsOption">
+  TLS configuration for the domain. See [TLS Options](#tls-options) below.
+</ParamField>
+
+### TLS Options
+
+The `TlsOption` type accepts the following constants:
+
+<ParamField body="tls" type="string">
+  - `resend.Enforced` - Require TLS for all email delivery
+  - `resend.Opportunistic` - Use TLS when available, fall back to unencrypted if not
+</ParamField>
+
+```go
+const (
+    Enforced      TlsOption = "enforced"
+    Opportunistic TlsOption = "opportunistic"
+)
+```
+
+## Response
+
+### Domain
+
+<ResponseField name="id" type="string">
+  The unique identifier for the domain
+</ResponseField>
+
+<ResponseField name="object" type="string">
+  Object type ("domain")
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The domain name
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Timestamp when the domain was created
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  The verification status of the domain
+</ResponseField>
+
+<ResponseField name="region" type="string">
+  The region where emails are sent from
+</ResponseField>
+
+<ResponseField name="records" type="[]Record">
+  DNS records for domain verification
+</ResponseField>
+
+## Examples
+
+### Enable Tracking
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    params := &resend.UpdateDomainRequest{
+        OpenTracking:  true,
+        ClickTracking: true,
+    }
+
+    domain, err := client.Domains.Update("d1e9e6f7-6a1c-4b3d-8c9e-1f2e3d4c5b6a", params)
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("Domain updated:", domain.Name)
+}
+```
+
+### Configure TLS
+
+```go
+params := &resend.UpdateDomainRequest{
+    Tls: resend.Enforced,
+}
+
+domain, err := client.Domains.Update("d1e9e6f7-6a1c-4b3d-8c9e-1f2e3d4c5b6a", params)
+if err != nil {
+    panic(err)
+}
+```
+
+### Update Multiple Settings
+
+```go
+ctx := context.Background()
+
+params := &resend.UpdateDomainRequest{
+    OpenTracking:  true,
+    ClickTracking: false,
+    Tls:           resend.Opportunistic,
+}
+
+domain, err := client.Domains.UpdateWithContext(ctx, "d1e9e6f7-6a1c-4b3d-8c9e-1f2e3d4c5b6a", params)
+if err != nil {
+    panic(err)
+}
+```

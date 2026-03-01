@@ -1,0 +1,112 @@
+---
+title: 'Send broadcast'
+description: 'Send a draft broadcast to your audience.'
+---
+
+Sends a broadcast to your audience. You can send it immediately or schedule it for later.
+
+## Methods
+
+### Send
+
+```go
+Send(params *SendBroadcastRequest) (SendBroadcastResponse, error)
+```
+
+Sends a broadcast using the default background context.
+
+### SendWithContext
+
+```go
+SendWithContext(ctx context.Context, params *SendBroadcastRequest) (SendBroadcastResponse, error)
+```
+
+Sends a broadcast with a custom context for cancellation and timeout control.
+
+## Request
+
+<ParamField body="broadcast_id" type="string" required>
+  The ID of the broadcast to send.
+</ParamField>
+
+<ParamField body="scheduled_at" type="string">
+  Schedule the email to be sent later. Accepts natural language (e.g., "in 1 min") or ISO 8601 format (e.g., "2024-08-05T11:52:01.858Z").
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  The unique identifier of the sent broadcast.
+</ResponseField>
+
+## Example: Send immediately
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    params := &resend.SendBroadcastRequest{
+        BroadcastId: "brd_123456",
+    }
+
+    response, err := client.Broadcasts.Send(params)
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("Broadcast sent:", response.Id)
+}
+```
+
+## Example: Schedule for later
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    params := &resend.SendBroadcastRequest{
+        BroadcastId: "brd_123456",
+        ScheduledAt: "2024-12-01T19:32:22.980Z",
+    }
+
+    response, err := client.Broadcasts.Send(params)
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("Broadcast scheduled:", response.Id)
+}
+```
+
+## Example: Schedule with natural language
+
+```go
+params := &resend.SendBroadcastRequest{
+    BroadcastId: "brd_123456",
+    ScheduledAt: "in 1 hour",
+}
+
+response, err := client.Broadcasts.Send(params)
+```
+
+<Info>
+  When scheduling a broadcast, you can use natural language like "in 1 min", "in 2 hours", or "tomorrow at 9am", or provide an ISO 8601 formatted timestamp.
+</Info>
+
+<Warning>
+  Make sure the broadcast is in draft status before sending. You cannot send a broadcast that has already been sent.
+</Warning>

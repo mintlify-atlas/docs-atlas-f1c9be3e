@@ -1,0 +1,94 @@
+---
+title: 'Publish Template'
+description: 'Publish a template to make it available for sending'
+---
+
+## Publish
+
+Publish a template by ID or alias using the default context.
+
+```go
+func (s *TemplatesSvcImpl) Publish(identifier string) (*PublishTemplateResponse, error)
+```
+
+### Parameters
+
+<ParamField path="identifier" type="string" required>
+  The template ID or alias.
+</ParamField>
+
+### Returns
+
+Returns a `*PublishTemplateResponse` containing the published template ID.
+
+### Example
+
+```go
+response, err := client.Templates.Publish("template_id_or_alias")
+if err != nil {
+  panic(err)
+}
+
+fmt.Println("Published template:", response.Id)
+```
+
+---
+
+## PublishWithContext
+
+Publish a template by ID or alias with a custom context.
+
+```go
+func (s *TemplatesSvcImpl) PublishWithContext(ctx context.Context, identifier string) (*PublishTemplateResponse, error)
+```
+
+### Parameters
+
+<ParamField path="ctx" type="context.Context" required>
+  Context for the request, useful for timeouts and cancellation.
+</ParamField>
+
+<ParamField path="identifier" type="string" required>
+  The template ID or alias.
+</ParamField>
+
+### Returns
+
+Returns a `*PublishTemplateResponse` containing the published template ID.
+
+### Example
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+defer cancel()
+
+response, err := client.Templates.PublishWithContext(ctx, "welcome-email")
+if err != nil {
+  panic(err)
+}
+
+fmt.Println("Published template:", response.Id)
+```
+
+---
+
+## Types
+
+### PublishTemplateResponse
+
+Response from publishing a template.
+
+```go
+type PublishTemplateResponse struct {
+  Id     string `json:"id"`
+  Object string `json:"object"`
+}
+```
+
+<ResponseField name="Id" type="string">
+  The unique identifier of the published template.
+</ResponseField>
+
+<ResponseField name="Object" type="string">
+  The object type, always "template".
+</ResponseField>

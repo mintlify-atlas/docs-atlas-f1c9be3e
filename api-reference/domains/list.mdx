@@ -1,0 +1,126 @@
+---
+title: List Domains
+description: Retrieve a list of all domains in your account
+---
+
+## Methods
+
+### List
+
+```go
+func (s *DomainsSvcImpl) List() (ListDomainsResponse, error)
+```
+
+Retrieves a list of all domains.
+
+### ListWithContext
+
+```go
+func (s *DomainsSvcImpl) ListWithContext(ctx context.Context) (ListDomainsResponse, error)
+```
+
+Retrieves a list of all domains with context support.
+
+### ListWithOptions
+
+```go
+func (s *DomainsSvcImpl) ListWithOptions(ctx context.Context, options *ListOptions) (ListDomainsResponse, error)
+```
+
+Retrieves a list of domains with pagination options.
+
+## Parameters
+
+### ListOptions (for ListWithOptions)
+
+<ParamField query="limit" type="*int">
+  Maximum number of domains to return per page
+</ParamField>
+
+<ParamField query="after" type="*string">
+  Cursor for pagination - retrieve results after this cursor
+</ParamField>
+
+<ParamField query="before" type="*string">
+  Cursor for pagination - retrieve results before this cursor
+</ParamField>
+
+## Response
+
+### ListDomainsResponse
+
+<ResponseField name="object" type="string">
+  Object type ("list")
+</ResponseField>
+
+<ResponseField name="data" type="[]Domain">
+  Array of domain objects. Each domain contains:
+  - `id` (string): Domain identifier
+  - `object` (string): Object type
+  - `name` (string): Domain name
+  - `created_at` (string): Creation timestamp
+  - `status` (string): Verification status
+  - `region` (string): Email sending region
+  - `records` ([]Record): DNS records
+</ResponseField>
+
+<ResponseField name="has_more" type="bool">
+  Whether there are more results available for pagination
+</ResponseField>
+
+## Examples
+
+### Basic Usage
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    domains, err := client.Domains.List()
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("Total domains:", len(domains.Data))
+    for _, domain := range domains.Data {
+        fmt.Printf("- %s (%s)\n", domain.Name, domain.Status)
+    }
+}
+```
+
+### With Pagination
+
+```go
+ctx := context.Background()
+
+limit := 10
+options := &resend.ListOptions{
+    Limit: &limit,
+}
+
+domains, err := client.Domains.ListWithOptions(ctx, options)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Domains:", len(domains.Data))
+fmt.Println("Has more:", domains.HasMore)
+```
+
+### With Context
+
+```go
+ctx := context.Background()
+
+domains, err := client.Domains.ListWithContext(ctx)
+if err != nil {
+    panic(err)
+}
+```

@@ -1,0 +1,227 @@
+---
+title: 'Send Batch Emails'
+description: 'Send multiple emails in a single request'
+---
+
+## Send
+
+Send a batch of emails using the default context.
+
+```go
+func (s *BatchSvcImpl) Send(params []*SendEmailRequest) (*BatchEmailResponse, error)
+```
+
+### Parameters
+
+<ParamField path="params" type="[]*SendEmailRequest" required>
+  Array of email requests to send in batch. Each request should follow the same structure as a single email send request.
+</ParamField>
+
+### Returns
+
+Returns a `*BatchEmailResponse` containing the results of the batch send operation.
+
+### Example
+
+```go
+emails := []*resend.SendEmailRequest{
+  {
+    From:    "onboarding@resend.dev",
+    To:      []string{"user1@example.com"},
+    Subject: "Welcome User 1",
+    Html:    "<p>Welcome to our service!</p>",
+  },
+  {
+    From:    "onboarding@resend.dev",
+    To:      []string{"user2@example.com"},
+    Subject: "Welcome User 2",
+    Html:    "<p>Welcome to our service!</p>",
+  },
+}
+
+response, err := client.Batch.Send(emails)
+if err != nil {
+  panic(err)
+}
+```
+
+---
+
+## SendWithContext
+
+Send a batch of emails with a custom context.
+
+```go
+func (s *BatchSvcImpl) SendWithContext(ctx context.Context, params []*SendEmailRequest) (*BatchEmailResponse, error)
+```
+
+### Parameters
+
+<ParamField path="ctx" type="context.Context" required>
+  Context for the request, useful for timeouts and cancellation.
+</ParamField>
+
+<ParamField path="params" type="[]*SendEmailRequest" required>
+  Array of email requests to send in batch.
+</ParamField>
+
+### Returns
+
+Returns a `*BatchEmailResponse` containing the results of the batch send operation.
+
+### Example
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+defer cancel()
+
+emails := []*resend.SendEmailRequest{
+  {
+    From:    "onboarding@resend.dev",
+    To:      []string{"user1@example.com"},
+    Subject: "Welcome User 1",
+    Html:    "<p>Welcome to our service!</p>",
+  },
+}
+
+response, err := client.Batch.SendWithContext(ctx, emails)
+if err != nil {
+  panic(err)
+}
+```
+
+---
+
+## SendWithOptions
+
+Send a batch of emails with custom context and options.
+
+```go
+func (s *BatchSvcImpl) SendWithOptions(ctx context.Context, params []*SendEmailRequest, options *BatchSendEmailOptions) (*BatchEmailResponse, error)
+```
+
+### Parameters
+
+<ParamField path="ctx" type="context.Context" required>
+  Context for the request, useful for timeouts and cancellation.
+</ParamField>
+
+<ParamField path="params" type="[]*SendEmailRequest" required>
+  Array of email requests to send in batch.
+</ParamField>
+
+<ParamField path="options" type="*BatchSendEmailOptions">
+  Additional options for the batch send operation.
+</ParamField>
+
+### Returns
+
+Returns a `*BatchEmailResponse` containing the results of the batch send operation.
+
+### Example
+
+```go
+options := &resend.BatchSendEmailOptions{
+  IdempotencyKey:  "unique-key-123",
+  BatchValidation: resend.BatchValidationPermissive,
+}
+
+emails := []*resend.SendEmailRequest{
+  {
+    From:    "onboarding@resend.dev",
+    To:      []string{"user1@example.com"},
+    Subject: "Welcome",
+    Html:    "<p>Welcome!</p>",
+  },
+}
+
+response, err := client.Batch.SendWithOptions(context.Background(), emails, options)
+if err != nil {
+  panic(err)
+}
+```
+
+---
+
+## Types
+
+### BatchSendEmailOptions
+
+Additional options for batch email sending.
+
+```go
+type BatchSendEmailOptions struct {
+  IdempotencyKey  string              `json:"idempotency_key,omitempty"`
+  BatchValidation BatchValidationMode `json:"-"`
+}
+```
+
+<ResponseField name="IdempotencyKey" type="string">
+  Unique key to ensure idempotent requests. Prevents duplicate sends if the same key is used.
+</ResponseField>
+
+<ResponseField name="BatchValidation" type="BatchValidationMode">
+  Controls the validation behavior for batch emails. Can be `BatchValidationStrict` (default) or `BatchValidationPermissive`.
+  
+  - `BatchValidationStrict`: Only sends the batch if all emails are valid
+  - `BatchValidationPermissive`: Processes all emails, allowing partial success
+</ResponseField>
+
+### BatchValidationMode
+
+Validation mode constants for batch email sending.
+
+```go
+type BatchValidationMode string
+
+const (
+  BatchValidationStrict     BatchValidationMode = "strict"
+  BatchValidationPermissive BatchValidationMode = "permissive"
+)
+```
+
+<ResponseField name="BatchValidationStrict" type="BatchValidationMode">
+  Only sends the batch if all emails are valid. This is the default mode.
+</ResponseField>
+
+<ResponseField name="BatchValidationPermissive" type="BatchValidationMode">
+  Processes all emails, allowing partial success. Failed emails will be listed in the `Errors` field of the response.
+</ResponseField>
+
+### BatchEmailResponse
+
+Response from a batch email send operation.
+
+```go
+type BatchEmailResponse struct {
+  Data   []SendEmailResponse `json:"data"`
+  Errors []BatchError        `json:"errors,omitempty"`
+}
+```
+
+<ResponseField name="Data" type="[]SendEmailResponse">
+  Array of successful email send responses, each containing the email ID.
+</ResponseField>
+
+<ResponseField name="Errors" type="[]BatchError">
+  Array of errors for specific emails in the batch when using permissive validation mode.
+</ResponseField>
+
+### BatchError
+
+Represents an error for a specific email in a batch request.
+
+```go
+type BatchError struct {
+  Index   int    `json:"index"`
+  Message string `json:"message"`
+}
+```
+
+<ResponseField name="Index" type="int">
+  The index of the failed email in the original request array.
+</ResponseField>
+
+<ResponseField name="Message" type="string">
+  Error message describing why the email failed.
+</ResponseField>

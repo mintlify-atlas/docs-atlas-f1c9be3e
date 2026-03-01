@@ -1,0 +1,99 @@
+---
+title: 'Schedule broadcast'
+description: 'Schedule a broadcast to be sent at a specific time.'
+---
+
+Scheduling broadcasts is handled through the [Send broadcast](/api-reference/broadcasts/send) method by providing the `scheduled_at` parameter.
+
+## How to schedule
+
+To schedule a broadcast, use the Send method with a `scheduled_at` value:
+
+```go
+params := &resend.SendBroadcastRequest{
+    BroadcastId: "brd_123456",
+    ScheduledAt: "2024-12-01T19:32:22.980Z",
+}
+
+response, err := client.Broadcasts.Send(params)
+```
+
+You can also schedule during broadcast creation:
+
+```go
+params := &resend.CreateBroadcastRequest{
+    Name:        "Scheduled Newsletter",
+    SegmentId:   "seg_123456",
+    From:        "hello@example.com",
+    Subject:     "Weekly Newsletter",
+    Html:        "<h1>This week's updates</h1>",
+    Send:        true,
+    ScheduledAt: "2024-12-01T19:32:22.980Z",
+}
+
+broadcast, err := client.Broadcasts.Create(params)
+```
+
+## Schedule formats
+
+The `scheduled_at` parameter accepts two formats:
+
+### ISO 8601 timestamp
+
+```go
+ScheduledAt: "2024-12-01T19:32:22.980Z"
+```
+
+### Natural language
+
+```go
+ScheduledAt: "in 1 min"
+ScheduledAt: "in 2 hours"
+ScheduledAt: "tomorrow at 9am"
+```
+
+## Complete example
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    // Create a draft broadcast first
+    createParams := &resend.CreateBroadcastRequest{
+        Name:      "Product Launch",
+        SegmentId: "seg_123456",
+        From:      "hello@example.com",
+        Subject:   "New Product Launch",
+        Html:      "<h1>Check out our new product!</h1>",
+    }
+
+    broadcast, err := client.Broadcasts.Create(createParams)
+    if err != nil {
+        panic(err)
+    }
+
+    // Schedule the broadcast
+    sendParams := &resend.SendBroadcastRequest{
+        BroadcastId: broadcast.Id,
+        ScheduledAt: "2024-12-01T19:32:22.980Z",
+    }
+
+    response, err := client.Broadcasts.Send(sendParams)
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("Broadcast scheduled:", response.Id)
+}
+```
+
+<Info>
+  For more details on sending and scheduling broadcasts, see the [Send broadcast](/api-reference/broadcasts/send) documentation.
+</Info>

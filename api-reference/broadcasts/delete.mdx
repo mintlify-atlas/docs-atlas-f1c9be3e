@@ -1,0 +1,111 @@
+---
+title: 'Delete broadcast'
+description: 'Delete a broadcast by ID.'
+---
+
+Removes a broadcast entry by its unique identifier.
+
+## Methods
+
+### Remove
+
+```go
+Remove(broadcastId string) (RemoveBroadcastResponse, error)
+```
+
+Deletes a broadcast using the default background context.
+
+### RemoveWithContext
+
+```go
+RemoveWithContext(ctx context.Context, broadcastId string) (RemoveBroadcastResponse, error)
+```
+
+Deletes a broadcast with a custom context for cancellation and timeout control.
+
+## Parameters
+
+<ParamField path="broadcastId" type="string" required>
+  The unique identifier of the broadcast to delete.
+</ParamField>
+
+## Response
+
+<ResponseField name="object" type="string">
+  The object type, always `broadcast`.
+</ResponseField>
+
+<ResponseField name="id" type="string">
+  The unique identifier of the deleted broadcast.
+</ResponseField>
+
+<ResponseField name="deleted" type="boolean">
+  Indicates whether the broadcast was successfully deleted.
+</ResponseField>
+
+## Example
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    response, err := client.Broadcasts.Remove("brd_123456")
+    if err != nil {
+        panic(err)
+    }
+
+    if response.Deleted {
+        fmt.Println("Broadcast deleted successfully")
+    }
+}
+```
+
+## Example: Check status before deleting
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    // Get the broadcast to check its status
+    broadcast, err := client.Broadcasts.Get("brd_123456")
+    if err != nil {
+        panic(err)
+    }
+
+    // Only delete if it hasn't been sent
+    if broadcast.Status != "sent" {
+        response, err := client.Broadcasts.Remove("brd_123456")
+        if err != nil {
+            panic(err)
+        }
+
+        if response.Deleted {
+            fmt.Printf("Broadcast deleted (was %s)\n", broadcast.Status)
+        }
+    } else {
+        fmt.Println("Cannot delete a broadcast that has already been sent")
+    }
+}
+```
+
+<Warning>
+  Deleting a broadcast is permanent and cannot be undone. If the broadcast has been sent, you may want to keep it for record-keeping purposes.
+</Warning>
+
+<Info>
+  You can delete broadcasts in any status (draft, scheduled, or sent). Deleting a scheduled broadcast will prevent it from being sent.
+</Info>

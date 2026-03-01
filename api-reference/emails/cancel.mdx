@@ -1,0 +1,119 @@
+---
+title: 'Cancel Scheduled Email'
+description: 'Cancel a scheduled email using the Resend Go SDK'
+---
+
+## Cancel
+
+Cancels a scheduled email by ID.
+
+```go
+func (s *EmailsSvcImpl) Cancel(emailId string) (*CancelScheduledEmailResponse, error)
+```
+
+### Parameters
+
+<ParamField path="emailId" type="string" required>
+  The unique identifier of the scheduled email to cancel.
+</ParamField>
+
+### Returns
+
+<ResponseField name="response" type="*CancelScheduledEmailResponse">
+  <Expandable title="CancelScheduledEmailResponse fields">
+    <ResponseField name="Id" type="string">
+      The unique identifier of the canceled email.
+    </ResponseField>
+    
+    <ResponseField name="Object" type="string">
+      The object type ("email").
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	client := resend.NewClient("re_123456789")
+
+	canceled, err := client.Emails.Cancel("4ef9a417-02e9-4d39-ad75-9611e0fcc33c")
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Canceled email: %s\n", canceled.Id)
+}
+```
+
+---
+
+## CancelWithContext
+
+Cancels a scheduled email by ID with context.
+
+```go
+func (s *EmailsSvcImpl) CancelWithContext(ctx context.Context, emailId string) (*CancelScheduledEmailResponse, error)
+```
+
+### Parameters
+
+<ParamField path="ctx" type="context.Context" required>
+  Context for the request.
+</ParamField>
+
+<ParamField path="emailId" type="string" required>
+  The unique identifier of the scheduled email to cancel.
+</ParamField>
+
+### Returns
+
+<ResponseField name="response" type="*CancelScheduledEmailResponse">
+  See [Cancel](#cancel) for response field details.
+</ResponseField>
+
+### Example
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	ctx := context.Background()
+	client := resend.NewClient("re_123456789")
+
+	// First, schedule an email
+	params := &resend.SendEmailRequest{
+		From:        "onboarding@resend.dev",
+		To:          []string{"delivered@resend.dev"},
+		Subject:     "Scheduled Email",
+		Text:        "This email will be sent later",
+		ScheduledAt: "2024-09-05T11:52:01.858Z",
+	}
+
+	sent, err := client.Emails.SendWithContext(ctx, params)
+	if err != nil {
+		panic(err)
+	}
+
+	// Cancel the scheduled email
+	canceled, err := client.Emails.CancelWithContext(ctx, sent.Id)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Canceled email: %s\n", canceled.Id)
+}
+```

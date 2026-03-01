@@ -1,0 +1,194 @@
+---
+title: 'Get Template'
+description: 'Retrieve a template by ID or alias'
+---
+
+## Get
+
+Retrieve a template by ID or alias using the default context.
+
+```go
+func (s *TemplatesSvcImpl) Get(identifier string) (*Template, error)
+```
+
+### Parameters
+
+<ParamField path="identifier" type="string" required>
+  The template ID or alias.
+</ParamField>
+
+### Returns
+
+Returns a `*Template` containing the full template details.
+
+### Example
+
+```go
+template, err := client.Templates.Get("template_id_or_alias")
+if err != nil {
+  panic(err)
+}
+
+fmt.Println("Template Name:", template.Name)
+fmt.Println("Status:", template.Status)
+```
+
+---
+
+## GetWithContext
+
+Retrieve a template by ID or alias with a custom context.
+
+```go
+func (s *TemplatesSvcImpl) GetWithContext(ctx context.Context, identifier string) (*Template, error)
+```
+
+### Parameters
+
+<ParamField path="ctx" type="context.Context" required>
+  Context for the request, useful for timeouts and cancellation.
+</ParamField>
+
+<ParamField path="identifier" type="string" required>
+  The template ID or alias.
+</ParamField>
+
+### Returns
+
+Returns a `*Template` containing the full template details.
+
+### Example
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+defer cancel()
+
+template, err := client.Templates.GetWithContext(ctx, "welcome-email")
+if err != nil {
+  panic(err)
+}
+
+fmt.Println("Template:", template.Name)
+```
+
+---
+
+## Types
+
+### Template
+
+Full template object returned by the Get endpoint.
+
+```go
+type Template struct {
+  Object      string                      `json:"object"`
+  Id          string                      `json:"id"`
+  Alias       string                      `json:"alias"`
+  Name        string                      `json:"name"`
+  CreatedAt   string                      `json:"created_at"`
+  UpdatedAt   string                      `json:"updated_at"`
+  Status      string                      `json:"status"`
+  PublishedAt string                      `json:"published_at"`
+  From        string                      `json:"from"`
+  Subject     string                      `json:"subject"`
+  ReplyTo     any                         `json:"reply_to"` // string, []string, or null
+  Html        string                      `json:"html"`
+  Text        string                      `json:"text"`
+  Variables   []*TemplateVariableResponse `json:"variables"`
+}
+```
+
+<ResponseField name="Object" type="string">
+  The object type, always "template".
+</ResponseField>
+
+<ResponseField name="Id" type="string">
+  The unique identifier of the template.
+</ResponseField>
+
+<ResponseField name="Alias" type="string">
+  The unique alias of the template.
+</ResponseField>
+
+<ResponseField name="Name" type="string">
+  The name of the template.
+</ResponseField>
+
+<ResponseField name="CreatedAt" type="string">
+  ISO 8601 timestamp of when the template was created.
+</ResponseField>
+
+<ResponseField name="UpdatedAt" type="string">
+  ISO 8601 timestamp of when the template was last updated.
+</ResponseField>
+
+<ResponseField name="Status" type="string">
+  The status of the template (e.g., "draft", "published").
+</ResponseField>
+
+<ResponseField name="PublishedAt" type="string">
+  ISO 8601 timestamp of when the template was published.
+</ResponseField>
+
+<ResponseField name="From" type="string">
+  The sender email address.
+</ResponseField>
+
+<ResponseField name="Subject" type="string">
+  The email subject line.
+</ResponseField>
+
+<ResponseField name="ReplyTo" type="any">
+  Reply-to email address. Can be a string, array of strings, or null.
+</ResponseField>
+
+<ResponseField name="Html" type="string">
+  The HTML content of the email template.
+</ResponseField>
+
+<ResponseField name="Text" type="string">
+  The plain text version of the email template.
+</ResponseField>
+
+<ResponseField name="Variables" type="[]*TemplateVariableResponse">
+  Array of variables defined in the template with their full details.
+</ResponseField>
+
+### TemplateVariableResponse
+
+Represents a variable in a template response with additional metadata.
+
+```go
+type TemplateVariableResponse struct {
+  Id            string       `json:"id"`
+  Key           string       `json:"key"`
+  Type          VariableType `json:"type"`
+  FallbackValue any          `json:"fallback_value"`
+  CreatedAt     string       `json:"created_at"`
+  UpdatedAt     string       `json:"updated_at"`
+}
+```
+
+<ResponseField name="Id" type="string">
+  The unique identifier of the variable.
+</ResponseField>
+
+<ResponseField name="Key" type="string">
+  The variable name.
+</ResponseField>
+
+<ResponseField name="Type" type="VariableType">
+  The type of the variable ("string" or "number").
+</ResponseField>
+
+<ResponseField name="FallbackValue" type="any">
+  Default value to use if the variable is not provided.
+</ResponseField>
+
+<ResponseField name="CreatedAt" type="string">
+  ISO 8601 timestamp of when the variable was created.
+</ResponseField>
+
+<ResponseField name="UpdatedAt" type="string">
+  ISO 8601 timestamp of when the variable was last updated.
+</ResponseField>

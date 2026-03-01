@@ -1,0 +1,274 @@
+---
+title: "Client"
+description: "Initialize and configure the Resend Go SDK client"
+---
+
+The Client is the main entry point for interacting with the Resend API. It manages authentication, HTTP communication, and provides access to all service endpoints.
+
+## Client Structure
+
+The `Client` struct contains all the service interfaces for interacting with different Resend API endpoints:
+
+<ResponseField name="Emails" type="*EmailsSvcImpl">
+  Service for sending, retrieving, and managing emails
+</ResponseField>
+
+<ResponseField name="Batch" type="BatchSvc">
+  Service for sending batch emails
+</ResponseField>
+
+<ResponseField name="ApiKeys" type="ApiKeysSvc">
+  Service for managing API keys
+</ResponseField>
+
+<ResponseField name="Domains" type="DomainsSvc">
+  Service for managing domains
+</ResponseField>
+
+<ResponseField name="Segments" type="SegmentsSvc">
+  Service for managing audience segments
+</ResponseField>
+
+<ResponseField name="Contacts" type="*ContactsSvcImpl">
+  Service for managing contacts
+</ResponseField>
+
+<ResponseField name="Broadcasts" type="BroadcastsSvc">
+  Service for managing broadcasts
+</ResponseField>
+
+<ResponseField name="Templates" type="TemplatesSvc">
+  Service for managing email templates
+</ResponseField>
+
+<ResponseField name="Topics" type="TopicsSvc">
+  Service for managing topics
+</ResponseField>
+
+<ResponseField name="Webhooks" type="WebhooksSvc">
+  Service for managing webhooks
+</ResponseField>
+
+<ResponseField name="ApiKey" type="string">
+  The API key used for authentication
+</ResponseField>
+
+<ResponseField name="BaseURL" type="*url.URL">
+  The base URL for API requests (defaults to `https://api.resend.com/`)
+</ResponseField>
+
+<ResponseField name="UserAgent" type="string">
+  The user agent string sent with requests
+</ResponseField>
+
+## Constructors
+
+### NewClient
+
+```go
+func NewClient(apiKey string) *Client
+```
+
+Creates a new Resend client with default configuration.
+
+<ParamField path="apiKey" type="string" required>
+  Your Resend API key. The function automatically trims whitespace and quotes.
+</ParamField>
+
+<ResponseField name="Client" type="*Client">
+  A configured Resend client instance ready to use
+</ResponseField>
+
+**Example**
+
+```go
+package main
+
+import (
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+    
+    // Use the client to access services
+    // client.Emails.Send(...)
+}
+```
+
+### NewCustomClient
+
+```go
+func NewCustomClient(httpClient *http.Client, apiKey string) *Client
+```
+
+Creates a new Resend client with a custom HTTP client. Use this constructor when you need to configure specific HTTP settings like timeouts, proxies, or custom transports.
+
+<ParamField path="httpClient" type="*http.Client">
+  Custom HTTP client for making requests. If `nil`, uses the default client with a 1-minute timeout.
+</ParamField>
+
+<ParamField path="apiKey" type="string" required>
+  Your Resend API key
+</ParamField>
+
+<ResponseField name="Client" type="*Client">
+  A configured Resend client instance with custom HTTP settings
+</ResponseField>
+
+**Example**
+
+```go
+package main
+
+import (
+    "net/http"
+    "time"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    // Create a custom HTTP client with custom timeout
+    httpClient := &http.Client{
+        Timeout: 30 * time.Second,
+    }
+    
+    client := resend.NewCustomClient(httpClient, "re_123456789")
+    
+    // Use the client
+    // client.Emails.Send(...)
+}
+```
+
+## Configuration
+
+### Base URL
+
+The base URL for API requests can be configured using the `RESEND_BASE_URL` environment variable. This is useful for testing or when using a proxy.
+
+**Default**: `https://api.resend.com/`
+
+**Example**
+
+```bash
+export RESEND_BASE_URL="https://custom-proxy.example.com/"
+```
+
+```go
+// The client will automatically use the custom base URL
+client := resend.NewClient("re_123456789")
+```
+
+### HTTP Client Configuration
+
+The default HTTP client has a 1-minute timeout. You can customize this using `NewCustomClient`:
+
+```go
+httpClient := &http.Client{
+    Timeout: 10 * time.Second,
+    Transport: &http.Transport{
+        MaxIdleConns:       10,
+        IdleConnTimeout:    30 * time.Second,
+    },
+}
+
+client := resend.NewCustomClient(httpClient, "re_123456789")
+```
+
+## Context Support
+
+All API methods in the Resend Go SDK support context for cancellation, timeouts, and passing request-scoped values.
+
+**Example with timeout**
+
+```go
+package main
+
+import (
+    "context"
+    "time"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+    
+    // Create a context with 5-second timeout
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+    
+    // Pass context to API methods
+    params := &resend.SendEmailRequest{
+        From:    "onboarding@resend.dev",
+        To:      []string{"delivered@resend.dev"},
+        Subject: "Hello World",
+        Text:    "It works!",
+    }
+    
+    sent, err := client.Emails.SendWithContext(ctx, params)
+    if err != nil {
+        // Handle error (including timeout)
+        panic(err)
+    }
+}
+```
+
+**Example with cancellation**
+
+```go
+ctx, cancel := context.WithCancel(context.Background())
+
+// Cancel the request if needed
+go func() {
+    time.Sleep(2 * time.Second)
+    cancel()
+}()
+
+sent, err := client.Emails.SendWithContext(ctx, params)
+```
+
+## User Agent
+
+The SDK automatically sets a user agent header in the format `resend-go/{version}`. The current version is `3.1.1`.
+
+## Error Handling
+
+The client automatically handles errors from the API and returns appropriate error types:
+
+- **Rate Limit Errors**: `RateLimitError` with retry information
+- **Invalid Request Errors**: Standard errors for validation failures
+- **Other Errors**: Generic errors with message from the API
+
+```go
+sent, err := client.Emails.Send(params)
+if err != nil {
+    // Check for specific error types
+    if rateLimitErr, ok := err.(*resend.RateLimitError); ok {
+        // Handle rate limit
+        fmt.Printf("Rate limited. Retry after: %s\n", rateLimitErr.RetryAfter)
+    } else {
+        // Handle other errors
+        fmt.Printf("Error: %v\n", err)
+    }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Send Emails" icon="envelope" href="/api-reference/emails/send">
+    Learn how to send emails using the SDK
+  </Card>
+  
+  <Card title="Batch Emails" icon="envelopes-bulk" href="/api-reference/batch/send">
+    Send multiple emails in a single request
+  </Card>
+  
+  <Card title="Manage Domains" icon="globe" href="/api-reference/domains/create">
+    Configure and verify your sending domains
+  </Card>
+  
+  <Card title="Email Templates" icon="file-code" href="/api-reference/templates/create">
+    Create and manage email templates
+  </Card>
+</CardGroup>

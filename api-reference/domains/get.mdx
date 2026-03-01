@@ -1,0 +1,103 @@
+---
+title: Get Domain
+description: Retrieve details of a specific domain
+---
+
+## Methods
+
+### Get
+
+```go
+func (s *DomainsSvcImpl) Get(domainId string) (Domain, error)
+```
+
+Retrieves a domain object by ID.
+
+### GetWithContext
+
+```go
+func (s *DomainsSvcImpl) GetWithContext(ctx context.Context, domainId string) (Domain, error)
+```
+
+Retrieves a domain object by ID with context support.
+
+## Parameters
+
+<ParamField path="domainId" type="string" required>
+  The unique identifier of the domain to retrieve
+</ParamField>
+
+## Response
+
+### Domain
+
+<ResponseField name="id" type="string">
+  The unique identifier for the domain
+</ResponseField>
+
+<ResponseField name="object" type="string">
+  Object type ("domain")
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The domain name
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Timestamp when the domain was created
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  The verification status of the domain
+</ResponseField>
+
+<ResponseField name="region" type="string">
+  The region where emails are sent from
+</ResponseField>
+
+<ResponseField name="records" type="[]Record">
+  DNS records for domain verification. Each record contains:
+  - `record` (string): Record identifier
+  - `name` (string): DNS record name
+  - `type` (string): Record type (TXT, MX, CNAME)
+  - `ttl` (string): Time to live
+  - `status` (string): Verification status
+  - `value` (string): Record value
+  - `priority` (json.Number, optional): Priority for MX records
+</ResponseField>
+
+## Example
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    domain, err := client.Domains.Get("d1e9e6f7-6a1c-4b3d-8c9e-1f2e3d4c5b6a")
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("Domain:", domain.Name)
+    fmt.Println("Status:", domain.Status)
+    fmt.Println("Region:", domain.Region)
+    fmt.Println("Created:", domain.CreatedAt)
+}
+```
+
+## Example with Context
+
+```go
+ctx := context.Background()
+
+domain, err := client.Domains.GetWithContext(ctx, "d1e9e6f7-6a1c-4b3d-8c9e-1f2e3d4c5b6a")
+if err != nil {
+    panic(err)
+}
+```

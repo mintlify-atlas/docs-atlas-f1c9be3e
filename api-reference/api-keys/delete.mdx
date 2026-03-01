@@ -1,0 +1,36 @@
+---
+title: Delete API Key
+description: Remove an API key by ID.
+---
+
+## Method
+
+```go
+func (s *ApiKeysSvcImpl) Remove(apiKeyId string) (bool, error)
+func (s *ApiKeysSvcImpl) RemoveWithContext(ctx context.Context, apiKeyId string) (bool, error)
+```
+
+## Parameters
+
+<ParamField path="apiKeyId" type="string" required>
+  The unique identifier of the API key to delete
+</ParamField>
+
+## Response
+
+Returns `true` if the API key was successfully deleted, or an error if deletion failed.
+
+## Example
+
+```go
+client := resend.NewClient("re_123456789")
+
+deleted, err := client.ApiKeys.Remove("key_abc123")
+if err != nil {
+    panic(err)
+}
+
+if deleted {
+    fmt.Println("API key deleted successfully")
+}
+```

@@ -1,0 +1,471 @@
+---
+title: Custom HTTP Client
+description: Configure the Resend Go SDK with custom HTTP client settings
+---
+
+The Resend Go SDK allows you to provide a custom HTTP client for advanced configurations like custom timeouts, connection pooling, and transport settings.
+
+## Why Use a Custom Client?
+
+A custom HTTP client gives you control over:
+
+- **Timeouts**: Configure request and connection timeouts
+- **Connection Pooling**: Optimize performance for high-volume sending
+- **Retries**: Implement custom retry logic
+- **Proxies**: Route requests through a proxy server
+- **TLS Configuration**: Custom certificate validation
+- **Middleware**: Add request/response interceptors
+
+## Basic Custom Client
+
+Create a Resend client with custom timeout settings:
+
+```go
+import (
+	"net/http"
+	"time"
+
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	httpClient := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	apiKey := os.Getenv("RESEND_API_KEY")
+	client := resend.NewCustomClient(httpClient, apiKey)
+
+	// Use the client normally
+	params := &resend.SendEmailRequest{
+		To:      []string{"delivered@resend.dev"},
+		From:    "onboarding@resend.dev",
+		Text:    "hello world",
+		Subject: "Hello from Golang",
+	}
+
+	sent, err := client.Emails.SendWithContext(ctx, params)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Sent email: %s\n", sent.Id)
+}
+```
+
+## Advanced Connection Pooling
+
+Optimize for high-volume email sending with connection pooling:
+
+```go
+import (
+	"net/http"
+	"time"
+)
+
+func createOptimizedClient() *http.Client {
+	return &http.Client{
+		Timeout: 120 * time.Second,
+		Transport: &http.Transport{
+			// Maximum idle connections across all hosts
+			MaxIdleConns:        100,
+			// Maximum idle connections per host
+			MaxIdleConnsPerHost: 10,
+			// How long an idle connection stays open
+			IdleConnTimeout:     90 * time.Second,
+			// TCP connection timeout
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			// TLS handshake timeout
+			TLSHandshakeTimeout: 10 * time.Second,
+			// Expect 100-continue timeout
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+	}
+}
+
+func main() {
+	httpClient := createOptimizedClient()
+	client := resend.NewCustomClient(httpClient, apiKey)
+	
+	// Send high-volume emails efficiently
+}
+```
+
+<Note>
+Connection pooling is especially important when sending many emails in parallel. It reduces the overhead of establishing new connections for each request.
+</Note>
+
+## Custom Retry Logic
+
+Implement automatic retries with exponential backoff:
+
+```go
+import (
+	"context"
+	"fmt"
+	"math"
+	"net/http"
+	"time"
+)
+
+// RetryTransport wraps http.RoundTripper with retry logic
+type RetryTransport struct {
+	Transport    http.RoundTripper
+	MaxRetries   int
+	RetryWaitMin time.Duration
+	RetryWaitMax time.Duration
+}
+
+func (t *RetryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	var resp *http.Response
+	var err error
+
+	for i := 0; i <= t.MaxRetries; i++ {
+		resp, err = t.Transport.RoundTrip(req)
+		
+		// Success - no retry needed
+		if err == nil && resp.StatusCode < 500 {
+			return resp, nil
+		}
+
+		// Don't retry on last attempt
+		if i == t.MaxRetries {
+			break
+		}
+
+		// Calculate backoff duration
+		backoff := time.Duration(math.Pow(2, float64(i))) * t.RetryWaitMin
+		if backoff > t.RetryWaitMax {
+			backoff = t.RetryWaitMax
+		}
+
+		fmt.Printf("Request failed (attempt %d/%d), retrying in %v...\n",
+			i+1, t.MaxRetries+1, backoff)
+		time.Sleep(backoff)
+	}
+
+	return resp, err
+}
+
+func createRetryClient() *http.Client {
+	return &http.Client{
+		Timeout: 120 * time.Second,
+		Transport: &RetryTransport{
+			Transport:    http.DefaultTransport,
+			MaxRetries:   3,
+			RetryWaitMin: 1 * time.Second,
+			RetryWaitMax: 30 * time.Second,
+		},
+	}
+}
+
+func main() {
+	httpClient := createRetryClient()
+	client := resend.NewCustomClient(httpClient, apiKey)
+
+	// Requests will automatically retry on server errors
+	params := &resend.SendEmailRequest{
+		To:      []string{"delivered@resend.dev"},
+		From:    "onboarding@resend.dev",
+		Subject: "Hello with retries",
+		Text:    "This request will retry on failures",
+	}
+
+	sent, err := client.Emails.SendWithContext(ctx, params)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Sent email: %s\n", sent.Id)
+}
+```
+
+<Warning>
+Be careful with retry logic for email sending. Use idempotency keys to prevent duplicate emails on retry.
+</Warning>
+
+## Proxy Configuration
+
+Route requests through a proxy server:
+
+```go
+import (
+	"net/http"
+	"net/url"
+	"time"
+)
+
+func createProxyClient(proxyURL string) (*http.Client, error) {
+	proxy, err := url.Parse(proxyURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			Proxy: http.ProxyURL(proxy),
+		},
+	}, nil
+}
+
+func main() {
+	httpClient, err := createProxyClient("http://proxy.example.com:8080")
+	if err != nil {
+		panic(err)
+	}
+
+	client := resend.NewCustomClient(httpClient, apiKey)
+	// All requests will go through the proxy
+}
+```
+
+## Request/Response Logging
+
+Log all HTTP requests and responses for debugging:
+
+```go
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"net/http"
+	"time"
+)
+
+// LoggingTransport logs all requests and responses
+type LoggingTransport struct {
+	Transport http.RoundTripper
+}
+
+func (t *LoggingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Log request
+	fmt.Printf("[%s] %s %s\n", time.Now().Format(time.RFC3339), req.Method, req.URL)
+	
+	if req.Body != nil {
+		bodyBytes, _ := io.ReadAll(req.Body)
+		req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+		fmt.Printf("Request Body: %s\n", string(bodyBytes))
+	}
+
+	// Make request
+	resp, err := t.Transport.RoundTrip(req)
+	if err != nil {
+		fmt.Printf("Request failed: %v\n", err)
+		return resp, err
+	}
+
+	// Log response
+	fmt.Printf("Response Status: %s\n", resp.Status)
+	
+	return resp, err
+}
+
+func createLoggingClient() *http.Client {
+	return &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &LoggingTransport{
+			Transport: http.DefaultTransport,
+		},
+	}
+}
+
+func main() {
+	httpClient := createLoggingClient()
+	client := resend.NewCustomClient(httpClient, apiKey)
+	
+	// All requests and responses will be logged
+}
+```
+
+## Custom TLS Configuration
+
+Configure custom TLS settings for certificate validation:
+
+```go
+import (
+	"crypto/tls"
+	"net/http"
+	"time"
+)
+
+func createTLSClient() *http.Client {
+	tlsConfig := &tls.Config{
+		// Minimum TLS version
+		MinVersion: tls.VersionTLS12,
+		// Prefer server cipher suites
+		PreferServerCipherSuites: true,
+		// Custom certificate verification (use with caution)
+		// InsecureSkipVerify: false,
+	}
+
+	return &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
+		},
+	}
+}
+
+func main() {
+	httpClient := createTLSClient()
+	client := resend.NewCustomClient(httpClient, apiKey)
+	
+	// Client uses custom TLS configuration
+}
+```
+
+## Complete Example
+
+Here's a production-ready example from [examples/send_email_custom_client.go](https://github.com/resend/resend-go/blob/main/examples/send_email_custom_client.go):
+
+```go examples/send_email_custom_client.go
+package main
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"os"
+	"time"
+
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	ctx := context.TODO()
+	apiKey := os.Getenv("RESEND_API_KEY")
+
+	// Create custom HTTP client with optimized settings
+	httpClient := &http.Client{
+		Timeout: 120 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 10,
+			IdleConnTimeout:     90 * time.Second,
+		},
+	}
+
+	// Create Resend client with the custom HTTP client
+	client := resend.NewCustomClient(httpClient, apiKey)
+
+	// Send email
+	params := &resend.SendEmailRequest{
+		To:      []string{"delivered@resend.dev"},
+		From:    "onboarding@resend.dev",
+		Text:    "hello world",
+		Subject: "Hello from Golang",
+		Cc:      []string{"cc@example.com"},
+		Bcc:     []string{"bcc@example.com"},
+		ReplyTo: "support@example.com",
+	}
+
+	sent, err := client.Emails.SendWithContext(ctx, params)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Sent email: %s\n", sent.Id)
+
+	// Send with idempotency key
+	options := &resend.SendEmailOptions{
+		IdempotencyKey: "unique-idempotency-key",
+	}
+
+	sent, err = client.Emails.SendWithOptions(ctx, params, options)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Sent email with idempotency key: %s\n", sent.Id)
+
+	// Get email details
+	email, err := client.Emails.GetWithContext(ctx, sent.Id)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Email: %+v\n", email)
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Set appropriate timeouts">
+    Always configure timeouts to prevent requests from hanging indefinitely:
+    
+    ```go
+    httpClient := &http.Client{
+    	Timeout: 30 * time.Second, // Global request timeout
+    	Transport: &http.Transport{
+    		DialContext: (&net.Dialer{
+    			Timeout: 5 * time.Second, // Connection timeout
+    		}).DialContext,
+    		TLSHandshakeTimeout: 5 * time.Second,
+    	},
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Reuse HTTP clients">
+    Create a single HTTP client and reuse it across requests. Creating new clients for each request wastes resources:
+    
+    ```go
+    // Good: Create once, reuse many times
+    var (
+    	httpClient   = createOptimizedClient()
+    	resendClient = resend.NewCustomClient(httpClient, apiKey)
+    )
+
+    // Bad: Creating new client every time
+    func sendEmail() {
+    	client := resend.NewClient(apiKey) // Don't do this repeatedly
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Use idempotency with retries">
+    When implementing retry logic, always use idempotency keys to prevent duplicate emails:
+    
+    ```go
+    params := &resend.SendEmailRequest{
+    	// ... email params
+    }
+
+    options := &resend.SendEmailOptions{
+    	IdempotencyKey: generateUniqueKey(), // Prevents duplicates on retry
+    }
+
+    sent, err := client.Emails.SendWithOptions(ctx, params, options)
+    ```
+  </Accordion>
+
+  <Accordion title="Monitor connection pool usage">
+    For high-volume applications, monitor and tune connection pool settings:
+    
+    ```go
+    transport := &http.Transport{
+    	// Adjust based on your concurrency needs
+    	MaxIdleConns:        100,  // Total pool size
+    	MaxIdleConnsPerHost: 10,   // Per-host limit
+    	IdleConnTimeout:     90 * time.Second,
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Error Handling" icon="triangle-exclamation" href="/examples/error-handling">
+    Handle rate limits and implement retry strategies
+  </Card>
+  <Card title="Basic Usage" icon="envelope" href="/examples/basic-usage">
+    Learn the fundamentals of sending emails
+  </Card>
+  <Card title="Templates" icon="file-code" href="/examples/templates">
+    Use email templates with dynamic variables
+  </Card>
+  <Card title="Batch Emails" icon="envelopes-bulk" href="/examples/batch-emails">
+    Send multiple emails efficiently
+  </Card>
+</CardGroup>

@@ -1,0 +1,135 @@
+---
+title: Delete Contact
+description: Remove a contact from your audience or global contacts
+---
+
+## Methods
+
+### Remove
+
+```go
+func (s *ContactsSvcImpl) Remove(options *RemoveContactOptions) (RemoveContactResponse, error)
+```
+
+Removes a contact.
+
+### RemoveWithContext
+
+```go
+func (s *ContactsSvcImpl) RemoveWithContext(ctx context.Context, options *RemoveContactOptions) (RemoveContactResponse, error)
+```
+
+Removes a contact with context support.
+
+## Parameters
+
+### RemoveContactOptions
+
+<ParamField body="audience_id" type="string">
+  Optional - Omit for global contacts. Include to remove an audience-specific contact.
+</ParamField>
+
+<ParamField body="id" type="string" required>
+  The contact ID or email address to remove
+</ParamField>
+
+## Response
+
+### RemoveContactResponse
+
+<ResponseField name="id" type="string">
+  The ID of the deleted contact
+</ResponseField>
+
+<ResponseField name="object" type="string">
+  Object type ("contact")
+</ResponseField>
+
+<ResponseField name="deleted" type="bool">
+  Whether the contact was successfully deleted
+</ResponseField>
+
+## Examples
+
+### Remove Global Contact by ID
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    options := &resend.RemoveContactOptions{
+        Id: "c1a2b3c4-d5e6-7f8g-9h0i-1j2k3l4m5n6o",
+    }
+
+    response, err := client.Contacts.Remove(options)
+    if err != nil {
+        panic(err)
+    }
+
+    if response.Deleted {
+        fmt.Println("Contact deleted:", response.Id)
+    }
+}
+```
+
+### Remove Global Contact by Email
+
+```go
+options := &resend.RemoveContactOptions{
+    Id: "user@example.com",
+}
+
+response, err := client.Contacts.Remove(options)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Deleted:", response.Deleted)
+```
+
+### Remove Audience Contact
+
+```go
+options := &resend.RemoveContactOptions{
+    AudienceId: "aud_123456",
+    Id:         "user@example.com",
+}
+
+response, err := client.Contacts.Remove(options)
+if err != nil {
+    panic(err)
+}
+```
+
+### With Context
+
+```go
+ctx := context.Background()
+
+options := &resend.RemoveContactOptions{
+    Id: "c1a2b3c4-d5e6-7f8g-9h0i-1j2k3l4m5n6o",
+}
+
+response, err := client.Contacts.RemoveWithContext(ctx, options)
+if err != nil {
+    panic(err)
+}
+
+if response.Deleted {
+    fmt.Println("Successfully removed contact")
+}
+```
+
+## Notes
+
+- The `Id` field accepts either a contact ID or email address
+- Omit `AudienceId` to remove global contacts
+- Include `AudienceId` to remove audience-specific contacts
+- This action cannot be undone

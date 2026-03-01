@@ -1,0 +1,139 @@
+---
+title: 'Update Email'
+description: 'Update a scheduled email using the Resend Go SDK'
+---
+
+## Update
+
+Updates a scheduled email with the given parameters.
+
+```go
+func (s *EmailsSvcImpl) Update(params *UpdateEmailRequest) (*UpdateEmailResponse, error)
+```
+
+### Parameters
+
+<ParamField path="params" type="*UpdateEmailRequest" required>
+  The update parameters.
+  
+  <Expandable title="UpdateEmailRequest fields">
+    <ParamField path="Id" type="string" required>
+      The unique identifier of the scheduled email to update.
+    </ParamField>
+    
+    <ParamField path="ScheduledAt" type="string" required>
+      New scheduled time for the email. Format: ISO 8601 (e.g., "2024-11-05T11:52:01.858Z").
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="response" type="*UpdateEmailResponse">
+  <Expandable title="UpdateEmailResponse fields">
+    <ResponseField name="Id" type="string">
+      The unique identifier of the updated email.
+    </ResponseField>
+    
+    <ResponseField name="Object" type="string">
+      The object type ("email").
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	client := resend.NewClient("re_123456789")
+
+	updateParams := &resend.UpdateEmailRequest{
+		Id:          "4ef9a417-02e9-4d39-ad75-9611e0fcc33c",
+		ScheduledAt: "2024-11-05T11:52:01.858Z",
+	}
+
+	updated, err := client.Emails.Update(updateParams)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Updated email: %s\n", updated.Id)
+}
+```
+
+---
+
+## UpdateWithContext
+
+Updates a scheduled email with the given parameters and context.
+
+```go
+func (s *EmailsSvcImpl) UpdateWithContext(ctx context.Context, params *UpdateEmailRequest) (*UpdateEmailResponse, error)
+```
+
+### Parameters
+
+<ParamField path="ctx" type="context.Context" required>
+  Context for the request.
+</ParamField>
+
+<ParamField path="params" type="*UpdateEmailRequest" required>
+  The update parameters. See [Update](#update) for field details.
+</ParamField>
+
+### Returns
+
+<ResponseField name="response" type="*UpdateEmailResponse">
+  See [Update](#update) for response field details.
+</ResponseField>
+
+### Example
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	ctx := context.Background()
+	client := resend.NewClient("re_123456789")
+
+	// First, schedule an email
+	sendParams := &resend.SendEmailRequest{
+		From:        "onboarding@resend.dev",
+		To:          []string{"delivered@resend.dev"},
+		Subject:     "Scheduled Email",
+		Text:        "This email will be sent later",
+		ScheduledAt: "2024-09-05T11:52:01.858Z",
+	}
+
+	sent, err := client.Emails.SendWithContext(ctx, sendParams)
+	if err != nil {
+		panic(err)
+	}
+
+	// Update the scheduled time
+	updateParams := &resend.UpdateEmailRequest{
+		Id:          sent.Id,
+		ScheduledAt: "2024-11-05T11:52:01.858Z",
+	}
+
+	updated, err := client.Emails.UpdateWithContext(ctx, updateParams)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Updated email: %s\n", updated.Id)
+}
+```

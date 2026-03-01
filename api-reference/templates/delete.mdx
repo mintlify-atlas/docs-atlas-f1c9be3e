@@ -1,0 +1,101 @@
+---
+title: 'Delete Template'
+description: 'Remove a template from your account'
+---
+
+## Remove
+
+Remove a template by ID or alias using the default context.
+
+```go
+func (s *TemplatesSvcImpl) Remove(identifier string) (*RemoveTemplateResponse, error)
+```
+
+### Parameters
+
+<ParamField path="identifier" type="string" required>
+  The template ID or alias to delete.
+</ParamField>
+
+### Returns
+
+Returns a `*RemoveTemplateResponse` confirming the deletion.
+
+### Example
+
+```go
+response, err := client.Templates.Remove("template_id_or_alias")
+if err != nil {
+  panic(err)
+}
+
+if response.Deleted {
+  fmt.Println("Template deleted successfully:", response.Id)
+}
+```
+
+---
+
+## RemoveWithContext
+
+Remove a template by ID or alias with a custom context.
+
+```go
+func (s *TemplatesSvcImpl) RemoveWithContext(ctx context.Context, identifier string) (*RemoveTemplateResponse, error)
+```
+
+### Parameters
+
+<ParamField path="ctx" type="context.Context" required>
+  Context for the request, useful for timeouts and cancellation.
+</ParamField>
+
+<ParamField path="identifier" type="string" required>
+  The template ID or alias to delete.
+</ParamField>
+
+### Returns
+
+Returns a `*RemoveTemplateResponse` confirming the deletion.
+
+### Example
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+defer cancel()
+
+response, err := client.Templates.RemoveWithContext(ctx, "welcome-email")
+if err != nil {
+  panic(err)
+}
+
+fmt.Println("Deleted:", response.Deleted)
+```
+
+---
+
+## Types
+
+### RemoveTemplateResponse
+
+Response from removing a template.
+
+```go
+type RemoveTemplateResponse struct {
+  Object  string `json:"object"`
+  Id      string `json:"id"`
+  Deleted bool   `json:"deleted"`
+}
+```
+
+<ResponseField name="Object" type="string">
+  The object type, always "template".
+</ResponseField>
+
+<ResponseField name="Id" type="string">
+  The unique identifier of the deleted template.
+</ResponseField>
+
+<ResponseField name="Deleted" type="bool">
+  Indicates whether the template was successfully deleted.
+</ResponseField>

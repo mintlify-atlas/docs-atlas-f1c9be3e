@@ -1,0 +1,46 @@
+---
+title: Delete Topic
+description: Remove a topic by ID.
+---
+
+## Method
+
+```go
+func (s *TopicsSvcImpl) Remove(topicId string) (*RemoveTopicResponse, error)
+func (s *TopicsSvcImpl) RemoveWithContext(ctx context.Context, topicId string) (*RemoveTopicResponse, error)
+```
+
+## Parameters
+
+<ParamField path="topicId" type="string" required>
+  The unique identifier of the topic to delete
+</ParamField>
+
+## Response
+
+<ResponseField name="Object" type="string">
+  Always `"topic"`
+</ResponseField>
+
+<ResponseField name="Id" type="string">
+  The unique identifier of the deleted topic
+</ResponseField>
+
+<ResponseField name="Deleted" type="bool">
+  Whether the topic was successfully deleted
+</ResponseField>
+
+## Example
+
+```go
+client := resend.NewClient("re_123456789")
+
+response, err := client.Topics.Remove("topic_abc123")
+if err != nil {
+    panic(err)
+}
+
+if response.Deleted {
+    fmt.Println("Topic deleted successfully")
+}
+```

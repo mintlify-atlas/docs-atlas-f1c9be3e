@@ -1,0 +1,82 @@
+---
+title: List Webhooks
+description: Retrieve a paginated list of webhooks.
+---
+
+## Method
+
+```go
+func (s *WebhooksSvcImpl) List() (*ListWebhooksResponse, error)
+func (s *WebhooksSvcImpl) ListWithContext(ctx context.Context) (*ListWebhooksResponse, error)
+func (s *WebhooksSvcImpl) ListWithOptions(ctx context.Context, options *ListOptions) (*ListWebhooksResponse, error)
+```
+
+## Parameters
+
+<ParamField path="options" type="*ListOptions">
+  Pagination options (only available in `ListWithOptions`)
+  
+  <ParamField path="Limit" type="*int">
+    Maximum number of webhooks to return
+  </ParamField>
+  
+  <ParamField path="After" type="*string">
+    Cursor for forward pagination
+  </ParamField>
+  
+  <ParamField path="Before" type="*string">
+    Cursor for backward pagination
+  </ParamField>
+</ParamField>
+
+## Response
+
+<ResponseField name="Object" type="string">
+  Always `"list"`
+</ResponseField>
+
+<ResponseField name="HasMore" type="bool">
+  Whether there are more results available
+</ResponseField>
+
+<ResponseField name="Data" type="[]WebhookInList">
+  Array of webhook objects
+  
+  <ResponseField name="Id" type="string">
+    The unique identifier of the webhook
+  </ResponseField>
+  
+  <ResponseField name="CreatedAt" type="string">
+    ISO 8601 timestamp of when the webhook was created
+  </ResponseField>
+  
+  <ResponseField name="Status" type="string">
+    The current status of the webhook
+  </ResponseField>
+  
+  <ResponseField name="Endpoint" type="string">
+    The URL endpoint receiving webhook events
+  </ResponseField>
+  
+  <ResponseField name="Events" type="[]string">
+    Array of subscribed event types
+  </ResponseField>
+</ResponseField>
+
+## Example
+
+```go
+client := resend.NewClient("re_123456789")
+
+response, err := client.Webhooks.List()
+if err != nil {
+    panic(err)
+}
+
+for _, webhook := range response.Data {
+    fmt.Printf("Webhook: %s - %s\n", webhook.Id, webhook.Endpoint)
+    fmt.Printf("  Events: %v\n", webhook.Events)
+}
+
+fmt.Println("Has More:", response.HasMore)
+```

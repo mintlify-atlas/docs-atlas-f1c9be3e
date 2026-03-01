@@ -1,0 +1,631 @@
+---
+title: Contact Management
+description: Learn how to manage contacts for email campaigns with the Resend Go SDK
+---
+
+Contacts represent email recipients in your Resend account. This guide covers creating, managing, and organizing contacts using both global contacts and audience-specific contacts.
+
+## Overview
+
+The Contacts API supports two types of contacts:
+
+<CardGroup cols={2}>
+  <Card title="Global Contacts" icon="globe">
+    Modern approach supporting custom properties and segment organization. Recommended for new integrations.
+  </Card>
+  
+  <Card title="Audience-Specific Contacts" icon="users">
+    Legacy approach tied to specific audiences. Limited property support.
+  </Card>
+</CardGroup>
+
+## Global Contacts vs Audience-Specific
+
+<Note>
+  **Recommendation:** Use global contacts for all new integrations. They provide more flexibility with custom properties and segment-based organization.
+</Note>
+
+| Feature | Global Contacts | Audience-Specific |
+|---------|----------------|-------------------|
+| Custom Properties | ✅ Yes | ❌ No |
+| Segment Organization | ✅ Yes | ❌ No |
+| Topic Subscriptions | ✅ Yes | ✅ Yes |
+| API Path | `/contacts` | `/audiences/{id}/contacts` |
+
+## Creating Contacts
+
+### Global Contact
+
+Create a contact without an audience ID to make it globally available.
+
+<CodeGroup>
+```go Basic Global Contact
+import (
+    "github.com/resend/resend-go/v3"
+)
+
+client := resend.NewClient("re_123456789")
+
+params := &resend.CreateContactRequest{
+    Email:     "user@example.com",
+    FirstName: "John",
+    LastName:  "Doe",
+}
+
+contact, err := client.Contacts.Create(params)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Contact ID:", contact.Id)
+```
+
+```go With Custom Properties
+params := &resend.CreateContactRequest{
+    Email:     "user@example.com",
+    FirstName: "John",
+    LastName:  "Doe",
+    Properties: map[string]any{
+        "tier":          "premium",
+        "role":          "admin",
+        "signup_source": "website",
+    },
+}
+
+contact, err := client.Contacts.Create(params)
+if err != nil {
+    panic(err)
+}
+```
+</CodeGroup>
+
+<Warning>
+  **Important:** The Resend API currently only accepts string values for custom properties. Non-string values (numbers, booleans, etc.) will be rejected.
+  
+  ```go
+  // ✅ Correct
+  Properties: map[string]any{
+      "age": "30",        // String
+      "active": "true",  // String
+  }
+  
+  // ❌ Incorrect
+  Properties: map[string]any{
+      "age": 30,         // Number - will fail
+      "active": true,    // Boolean - will fail
+  }
+  ```
+</Warning>
+
+### Audience-Specific Contact (Legacy)
+
+Create a contact tied to a specific audience by providing an `AudienceId`.
+
+```go Audience-Specific Contact
+params := &resend.CreateContactRequest{
+    Email:        "user@example.com",
+    AudienceId:   "ca4e37c5-a82a-4199-a3b8-bf912a6472aa",
+    FirstName:    "Jane",
+    LastName:     "Smith",
+    Unsubscribed: false,
+}
+
+contact, err := client.Contacts.Create(params)
+if err != nil {
+    panic(err)
+}
+```
+
+## Custom Properties
+
+Global contacts support custom properties for storing additional metadata. Properties must be defined before use.
+
+<Steps>
+  <Step title="Define Properties">
+    First, create the property definitions you want to use:
+    
+    ```go
+    // Define available properties
+    properties := []struct {
+        key string
+        typ string
+    }{
+        {"tier", "string"},
+        {"role", "string"},
+        {"signup_source", "string"},
+    }
+
+    for _, prop := range properties {
+        _, err := client.Contacts.Properties.Create(&resend.CreateContactPropertyRequest{
+            Key:  prop.key,
+            Type: prop.typ,
+        })
+        if err != nil {
+            fmt.Printf("Property '%s' may already exist: %v\n", prop.key, err)
+        }
+    }
+    ```
+  </Step>
+  
+  <Step title="Use Properties on Contacts">
+    Add the properties when creating or updating contacts:
+    
+    ```go
+    params := &resend.CreateContactRequest{
+        Email:     "user@example.com",
+        FirstName: "John",
+        LastName:  "Doe",
+        Properties: map[string]any{
+            "tier":          "premium",
+            "role":          "admin",
+            "signup_source": "website",
+        },
+    }
+
+    contact, err := client.Contacts.Create(params)
+    ```
+  </Step>
+  
+  <Step title="Access Properties">
+    Properties are returned when retrieving contacts:
+    
+    ```go
+    contact, err := client.Contacts.Get(&resend.GetContactOptions{
+        Id: contactId,
+    })
+    
+    if contact.Properties != nil {
+        fmt.Printf("Tier: %v\n", contact.Properties["tier"])
+        fmt.Printf("Role: %v\n", contact.Properties["role"])
+    }
+    ```
+  </Step>
+</Steps>
+
+## Retrieving Contacts
+
+Get a single contact by ID or email address.
+
+<CodeGroup>
+```go Get Global Contact by ID
+options := &resend.GetContactOptions{
+    Id: "479e3145-dd38-476b-932c-529ceb705947",
+}
+
+contact, err := client.Contacts.Get(options)
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("%s %s (%s)\n", contact.FirstName, contact.LastName, contact.Email)
+```
+
+```go Get by Email Address
+options := &resend.GetContactOptions{
+    Id: "user@example.com", // Can use email instead of ID
+}
+
+contact, err := client.Contacts.Get(options)
+if err != nil {
+    panic(err)
+}
+```
+
+```go Get Audience-Specific Contact
+options := &resend.GetContactOptions{
+    AudienceId: "ca4e37c5-a82a-4199-a3b8-bf912a6472aa",
+    Id:         "479e3145-dd38-476b-932c-529ceb705947",
+}
+
+contact, err := client.Contacts.Get(options)
+```
+</CodeGroup>
+
+<Tip>
+  You can retrieve contacts by either their ID or email address. Both work interchangeably in the `Id` field.
+</Tip>
+
+## Listing Contacts
+
+Retrieve all contacts with optional pagination.
+
+<CodeGroup>
+```go List Global Contacts
+// Omit AudienceId for global contacts
+options := &resend.ListContactsOptions{}
+
+contacts, err := client.Contacts.List(options)
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Found %d contacts\n", len(contacts.Data))
+for _, contact := range contacts.Data {
+    fmt.Printf("%s (%s)\n", contact.Email, contact.Id)
+}
+```
+
+```go List Audience-Specific Contacts
+options := &resend.ListContactsOptions{
+    AudienceId: "ca4e37c5-a82a-4199-a3b8-bf912a6472aa",
+}
+
+contacts, err := client.Contacts.List(options)
+```
+
+```go With Pagination
+limit := 50
+after := "479e3145-dd38-476b-932c-529ceb705947"
+
+options := &resend.ListContactsOptions{
+    Limit: &limit,
+    After: &after,
+}
+
+contacts, err := client.Contacts.List(options)
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Has more: %v\n", contacts.HasMore)
+```
+</CodeGroup>
+
+## Updating Contacts
+
+Update contact information including properties and subscription status.
+
+<CodeGroup>
+```go Update Basic Info
+params := &resend.UpdateContactRequest{
+    Id:        "479e3145-dd38-476b-932c-529ceb705947",
+    FirstName: "Jane",
+    LastName:  "Updated",
+    Email:     "newemail@example.com",
+}
+
+updated, err := client.Contacts.Update(params)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Updated:", updated.Data.Email)
+```
+
+```go Update Properties
+params := &resend.UpdateContactRequest{
+    Id: "479e3145-dd38-476b-932c-529ceb705947",
+    Properties: map[string]any{
+        "tier":   "enterprise",
+        "role":   "owner",
+        "active": "true",
+    },
+}
+
+updated, err := client.Contacts.Update(params)
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("New properties: %+v\n", updated.Data.Properties)
+```
+
+```go Update Unsubscribed Status
+params := &resend.UpdateContactRequest{
+    Id: "479e3145-dd38-476b-932c-529ceb705947",
+}
+
+// Use SetUnsubscribed method for boolean false values
+params.SetUnsubscribed(false)
+
+updated, err := client.Contacts.Update(params)
+if err != nil {
+    panic(err)
+}
+```
+</CodeGroup>
+
+<Note>
+  The `SetUnsubscribed()` method is required to set the unsubscribed status to `false` due to Go's zero-value behavior with booleans. This will be fixed in v3 of the SDK.
+</Note>
+
+## Deleting Contacts
+
+Remove contacts by ID or email address.
+
+<CodeGroup>
+```go Remove Global Contact by ID
+options := &resend.RemoveContactOptions{
+    Id: "479e3145-dd38-476b-932c-529ceb705947",
+}
+
+removed, err := client.Contacts.Remove(options)
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Deleted: %v\n", removed.Deleted)
+```
+
+```go Remove by Email
+options := &resend.RemoveContactOptions{
+    Id: "user@example.com",
+}
+
+removed, err := client.Contacts.Remove(options)
+```
+
+```go Remove Audience-Specific Contact
+options := &resend.RemoveContactOptions{
+    AudienceId: "ca4e37c5-a82a-4199-a3b8-bf912a6472aa",
+    Id:         "479e3145-dd38-476b-932c-529ceb705947",
+}
+
+removed, err := client.Contacts.Remove(options)
+```
+</CodeGroup>
+
+## Nested Services
+
+The Contacts service includes three nested services for advanced functionality:
+
+### Topics
+
+Manage contact topic subscriptions for preference-based email campaigns.
+
+```go Managing Topic Subscriptions
+// List topics for a contact
+topics, err := client.Contacts.Topics.List(contactId)
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Contact has %d topic subscriptions\n", len(topics.Data))
+
+// Update topic subscriptions
+updateParams := &resend.UpdateContactTopicsRequest{
+    Id: contactId,
+    Topics: []resend.TopicSubscriptionUpdate{
+        {
+            Id:           "topic-123",
+            Subscription: "opt_in",
+        },
+    },
+}
+
+updated, err := client.Contacts.Topics.Update(updateParams)
+```
+
+<Tip>
+  See the [Topics example](https://github.com/resend/resend-go/blob/main/examples/topics.go) for complete usage patterns.
+</Tip>
+
+### Segments
+
+Add contacts to segments for targeted campaigns.
+
+```go Managing Contact Segments
+// Add contact to segment
+addParams := &resend.AddContactSegmentRequest{
+    ContactId: contactId,
+    SegmentId: "seg-123",
+}
+
+_, err := client.Contacts.Segments.Add(addParams)
+if err != nil {
+    panic(err)
+}
+
+// List contact's segments
+listParams := &resend.ListContactSegmentsRequest{
+    ContactId: contactId,
+}
+
+segments, err := client.Contacts.Segments.List(listParams)
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Contact is in %d segment(s)\n", len(segments.Data))
+
+// Remove contact from segment
+removeParams := &resend.RemoveContactSegmentRequest{
+    ContactId: contactId,
+    SegmentId: "seg-123",
+}
+
+removed, err := client.Contacts.Segments.Remove(removeParams)
+```
+
+### Properties
+
+Define custom property schemas for contacts.
+
+```go Managing Property Definitions
+// Create a property definition
+propParams := &resend.CreateContactPropertyRequest{
+    Key:  "company_size",
+    Type: "string",
+}
+
+prop, err := client.Contacts.Properties.Create(propParams)
+if err != nil {
+    panic(err)
+}
+
+// List all property definitions
+properties, err := client.Contacts.Properties.List()
+if err != nil {
+    panic(err)
+}
+
+for _, prop := range properties.Data {
+    fmt.Printf("%s: %s\n", prop.Key, prop.Type)
+}
+```
+
+## Complete Example
+
+Here's a complete workflow demonstrating contact management:
+
+```go Complete Contact Workflow
+package main
+
+import (
+    "fmt"
+    "os"
+    
+    "github.com/resend/resend-go/v3"
+)
+
+func main() {
+    apiKey := os.Getenv("RESEND_API_KEY")
+    client := resend.NewClient(apiKey)
+
+    // 1. Define custom properties
+    properties := []struct {
+        key string
+        typ string
+    }{
+        {"tier", "string"},
+        {"role", "string"},
+        {"signup_source", "string"},
+    }
+
+    for _, prop := range properties {
+        _, err := client.Contacts.Properties.Create(&resend.CreateContactPropertyRequest{
+            Key:  prop.key,
+            Type: prop.typ,
+        })
+        if err != nil {
+            fmt.Printf("Property '%s' may already exist\n", prop.key)
+        }
+    }
+
+    // 2. Create a global contact with properties
+    createParams := &resend.CreateContactRequest{
+        Email:     "user@example.com",
+        FirstName: "John",
+        LastName:  "Doe",
+        Properties: map[string]any{
+            "tier":          "premium",
+            "role":          "admin",
+            "signup_source": "website",
+        },
+    }
+
+    created, err := client.Contacts.Create(createParams)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("Created contact: %s\n", created.Id)
+
+    // 3. Retrieve and display contact
+    contact, err := client.Contacts.Get(&resend.GetContactOptions{
+        Id: created.Id,
+    })
+    if err != nil {
+        panic(err)
+    }
+    
+    fmt.Printf("\nContact Details:\n")
+    fmt.Printf("Name: %s %s\n", contact.FirstName, contact.LastName)
+    fmt.Printf("Email: %s\n", contact.Email)
+    if contact.Properties != nil {
+        fmt.Printf("Properties: %+v\n", contact.Properties)
+    }
+
+    // 4. Create a segment and add contact
+    segment, err := client.Segments.Create(&resend.CreateSegmentRequest{
+        Name: "Premium Users",
+    })
+    if err != nil {
+        panic(err)
+    }
+
+    _, err = client.Contacts.Segments.Add(&resend.AddContactSegmentRequest{
+        ContactId: created.Id,
+        SegmentId: segment.Id,
+    })
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println("\nAdded contact to segment")
+
+    // 5. List all global contacts
+    contacts, err := client.Contacts.List(&resend.ListContactsOptions{})
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("\nTotal global contacts: %d\n", len(contacts.Data))
+
+    // 6. Update contact properties
+    updateParams := &resend.UpdateContactRequest{
+        Id: created.Id,
+        Properties: map[string]any{
+            "tier": "enterprise",
+        },
+    }
+
+    updated, err := client.Contacts.Update(updateParams)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("\nUpdated contact tier: %v\n", updated.Data.Properties["tier"])
+
+    // 7. Clean up
+    _, err = client.Contacts.Remove(&resend.RemoveContactOptions{
+        Id: created.Id,
+    })
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println("\nContact removed")
+
+    _, err = client.Segments.Remove(segment.Id)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println("Segment removed")
+}
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Global Contacts" icon="globe">
+    Prefer global contacts over audience-specific contacts for flexibility and custom properties support.
+  </Card>
+  
+  <Card title="Define Properties First" icon="list">
+    Always create property definitions before using them on contacts.
+  </Card>
+  
+  <Card title="String Values Only" icon="quote">
+    Remember that custom properties currently only accept string values.
+  </Card>
+  
+  <Card title="Organize with Segments" icon="layer-group">
+    Use segments instead of audiences to organize contacts into targeted groups.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Segments" icon="layer-group" href="/guides/segments">
+    Learn how to organize contacts into segments
+  </Card>
+  
+  <Card title="Broadcasts" icon="broadcast-tower" href="/guides/broadcasts">
+    Send email campaigns to your contacts
+  </Card>
+  
+  <Card title="Contact Properties" icon="sliders" href="https://github.com/resend/resend-go/blob/main/examples/contact_properties.go">
+    View the contact properties example
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="https://resend.com/docs/api-reference/contacts">
+    View the complete Contacts API reference
+  </Card>
+</CardGroup>

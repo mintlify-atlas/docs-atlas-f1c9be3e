@@ -1,0 +1,54 @@
+---
+title: Create Topic
+description: Create a new topic for audience management.
+---
+
+## Method
+
+```go
+func (s *TopicsSvcImpl) Create(params *CreateTopicRequest) (*CreateTopicResponse, error)
+func (s *TopicsSvcImpl) CreateWithContext(ctx context.Context, params *CreateTopicRequest) (*CreateTopicResponse, error)
+```
+
+## Parameters
+
+<ParamField path="params" type="*CreateTopicRequest" required>
+  The topic creation parameters
+  
+  <ParamField path="Name" type="string" required>
+    The name of the topic
+  </ParamField>
+  
+  <ParamField path="DefaultSubscription" type="DefaultSubscription" required>
+    Default subscription preference for new contacts. Can be `"opt_in"` or `"opt_out"`
+  </ParamField>
+  
+  <ParamField path="Description" type="string">
+    Optional description of the topic
+  </ParamField>
+</ParamField>
+
+## Response
+
+<ResponseField name="Id" type="string">
+  The unique identifier of the created topic
+</ResponseField>
+
+## Example
+
+```go
+client := resend.NewClient("re_123456789")
+
+params := &resend.CreateTopicRequest{
+    Name:                "Product Updates",
+    DefaultSubscription: resend.DefaultSubscriptionOptIn,
+    Description:         "Monthly product updates and announcements",
+}
+
+topic, err := client.Topics.Create(params)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Topic ID:", topic.Id)
+```

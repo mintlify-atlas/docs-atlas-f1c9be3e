@@ -1,0 +1,489 @@
+---
+title: 'Sending Emails'
+description: 'Learn how to send emails with the Resend Go SDK'
+---
+
+The Resend Go SDK provides multiple methods for sending emails with support for text, HTML, headers, tags, and more.
+
+## Quick Start
+
+Here's a simple example to send your first email:
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	ctx := context.Background()
+	apiKey := os.Getenv("RESEND_API_KEY")
+
+	client := resend.NewClient(apiKey)
+
+	params := &resend.SendEmailRequest{
+		To:      []string{"delivered@resend.dev"},
+		From:    "onboarding@resend.dev",
+		Subject: "Hello from Golang",
+		Text:    "hello world",
+	}
+
+	sent, err := client.Emails.Send(params)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Email sent: %s\n", sent.Id)
+}
+```
+
+## Send Methods
+
+The SDK provides three methods for sending emails, each with different levels of control:
+
+<CodeGroup>
+
+```go Send
+// Simple send without context
+sent, err := client.Emails.Send(params)
+if err != nil {
+	panic(err)
+}
+```
+
+```go SendWithContext
+// Send with context for timeout/cancellation control
+ctx := context.TODO()
+sent, err := client.Emails.SendWithContext(ctx, params)
+if err != nil {
+	panic(err)
+}
+```
+
+```go SendWithOptions
+// Send with additional options like idempotency
+ctx := context.TODO()
+options := &resend.SendEmailOptions{
+	IdempotencyKey: "unique-idempotency-key",
+}
+
+sent, err := client.Emails.SendWithOptions(ctx, params, options)
+if err != nil {
+	panic(err)
+}
+```
+
+</CodeGroup>
+
+<Tip>
+Use `SendWithContext` when you need timeout or cancellation control. Use `SendWithOptions` when you need idempotency guarantees for retry logic.
+</Tip>
+
+## SendEmailRequest Fields
+
+The `SendEmailRequest` struct supports the following fields:
+
+<ParamField path="from" type="string" required>
+  The sender email address. Must be a verified domain.
+</ParamField>
+
+<ParamField path="to" type="[]string" required>
+  Array of recipient email addresses.
+</ParamField>
+
+<ParamField path="subject" type="string" required>
+  The email subject line.
+</ParamField>
+
+<ParamField path="text" type="string">
+  Plain text version of the email content.
+</ParamField>
+
+<ParamField path="html" type="string">
+  HTML version of the email content.
+</ParamField>
+
+<ParamField path="cc" type="[]string">
+  Array of CC recipient email addresses.
+</ParamField>
+
+<ParamField path="bcc" type="[]string">
+  Array of BCC recipient email addresses.
+</ParamField>
+
+<ParamField path="replyTo" type="string">
+  Reply-to email address.
+</ParamField>
+
+<ParamField path="headers" type="map[string]string">
+  Custom email headers as key-value pairs.
+</ParamField>
+
+<ParamField path="tags" type="[]Tag">
+  Custom metadata tags for categorizing and tracking emails.
+</ParamField>
+
+<ParamField path="attachments" type="[]*Attachment">
+  Array of file attachments. See [Attachments](/guides/attachments) guide.
+</ParamField>
+
+<ParamField path="scheduledAt" type="string">
+  ISO 8601 datetime to schedule email delivery. See [Scheduled Emails](/guides/scheduled-emails) guide.
+</ParamField>
+
+<ParamField path="template" type="*EmailTemplate">
+  Template configuration for sending template-based emails. See [Email Templates](/guides/email-templates) guide.
+</ParamField>
+
+## Sending Text and HTML Emails
+
+<Tabs>
+  <Tab title="Text Only">
+    ```go
+    params := &resend.SendEmailRequest{
+        To:      []string{"user@example.com"},
+        From:    "noreply@yourdomain.com",
+        Subject: "Welcome!",
+        Text:    "Welcome to our platform. We're excited to have you!",
+    }
+
+    sent, err := client.Emails.Send(params)
+    ```
+  </Tab>
+  
+  <Tab title="HTML Only">
+    ```go
+    params := &resend.SendEmailRequest{
+        To:      []string{"user@example.com"},
+        From:    "noreply@yourdomain.com",
+        Subject: "Welcome!",
+        Html:    "<h1>Welcome!</h1><p>We're excited to have you on board.</p>",
+    }
+
+    sent, err := client.Emails.Send(params)
+    ```
+  </Tab>
+  
+  <Tab title="Both">
+    ```go
+    params := &resend.SendEmailRequest{
+        To:      []string{"user@example.com"},
+        From:    "noreply@yourdomain.com",
+        Subject: "Welcome!",
+        Text:    "Welcome to our platform. We're excited to have you!",
+        Html:    "<h1>Welcome!</h1><p>We're excited to have you on board.</p>",
+    }
+
+    sent, err := client.Emails.Send(params)
+    ```
+    
+    <Note>
+      Providing both `Text` and `Html` versions ensures better email client compatibility and accessibility.
+    </Note>
+  </Tab>
+</Tabs>
+
+## Using CC, BCC, and Reply-To
+
+```go
+params := &resend.SendEmailRequest{
+	To:      []string{"delivered@resend.dev"},
+	From:    "onboarding@resend.dev",
+	Subject: "Hello from Golang",
+	Text:    "hello world",
+	Cc:      []string{"cc@example.com"},
+	Bcc:     []string{"bcc@example.com"},
+	ReplyTo: "support@yourdomain.com",
+}
+
+sent, err := client.Emails.Send(params)
+```
+
+## Adding Custom Headers
+
+You can include custom headers for advanced email routing or tracking:
+
+```go
+params := &resend.SendEmailRequest{
+	To:      []string{"user@example.com"},
+	From:    "noreply@yourdomain.com",
+	Subject: "Custom Headers Example",
+	Text:    "This email includes custom headers.",
+	Headers: map[string]string{
+		"X-Custom-Header": "custom-value",
+		"X-Priority":      "high",
+		"X-Entity-Ref-ID": "12345",
+	},
+}
+
+sent, err := client.Emails.Send(params)
+```
+
+<Warning>
+  Some header names are reserved and cannot be overridden (e.g., `From`, `To`, `Subject`).
+</Warning>
+
+## Using Tags for Categorization
+
+Tags allow you to add custom metadata to emails for categorization, filtering, and analytics:
+
+```go
+params := &resend.SendEmailRequest{
+	To:      []string{"user@example.com"},
+	From:    "noreply@yourdomain.com",
+	Subject: "Your Order Confirmation",
+	Html:    "<p>Thank you for your order!</p>",
+	Tags: []resend.Tag{
+		{
+			Name:  "category",
+			Value: "order_confirmation",
+		},
+		{
+			Name:  "customer_id",
+			Value: "cus_123456",
+		},
+	},
+}
+
+sent, err := client.Emails.Send(params)
+```
+
+<Tip>
+  Use tags to segment your email analytics and track performance by category, user segment, or campaign.
+</Tip>
+
+## Idempotency Keys
+
+Idempotency keys prevent duplicate email sends when retrying failed requests:
+
+```go
+ctx := context.Background()
+
+params := &resend.SendEmailRequest{
+	To:      []string{"user@example.com"},
+	From:    "noreply@yourdomain.com",
+	Subject: "Order Confirmation #12345",
+	Text:    "Your order has been confirmed.",
+}
+
+options := &resend.SendEmailOptions{
+	IdempotencyKey: "order-12345-confirmation",
+}
+
+// This will only send once, even if called multiple times
+sent, err := client.Emails.SendWithOptions(ctx, params, options)
+if err != nil {
+	panic(err)
+}
+```
+
+<Note>
+  Idempotency keys are valid for 24 hours. Multiple requests with the same key within this window will return the same response without sending duplicate emails.
+</Note>
+
+## Retrieving Sent Emails
+
+You can retrieve details about a sent email using its ID:
+
+```go
+ctx := context.Background()
+
+// Get email by ID
+email, err := client.Emails.GetWithContext(ctx, "49a3999c-0ce1-4ea6-ab68-afcd6dc2e794")
+if err != nil {
+	panic(err)
+}
+
+fmt.Printf("Email ID: %s\n", email.Id)
+fmt.Printf("Subject: %s\n", email.Subject)
+fmt.Printf("To: %v\n", email.To)
+fmt.Printf("From: %s\n", email.From)
+fmt.Printf("Created At: %s\n", email.CreatedAt)
+fmt.Printf("Last Event: %s\n", email.LastEvent)
+```
+
+Source: [emails.go:315](emails.go:315)
+
+## Listing Emails
+
+Retrieve a list of recently sent emails:
+
+<Tabs>
+  <Tab title="Basic List">
+    ```go
+    ctx := context.Background()
+
+    listResp, err := client.Emails.ListWithContext(ctx)
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Printf("Found %d emails\n", len(listResp.Data))
+    fmt.Printf("Has more: %v\n", listResp.HasMore)
+
+    for _, email := range listResp.Data {
+        fmt.Printf("- ID: %s, Subject: %s\n", email.Id, email.Subject)
+    }
+    ```
+  </Tab>
+  
+  <Tab title="With Pagination">
+    ```go
+    ctx := context.Background()
+
+    limit := 10
+    paginatedResp, err := client.Emails.ListWithOptions(ctx, &resend.ListOptions{
+        Limit: &limit,
+    })
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Printf("Found %d emails\n", len(paginatedResp.Data))
+    ```
+  </Tab>
+  
+  <Tab title="Cursor Pagination">
+    ```go
+    ctx := context.Background()
+
+    limit := 10
+    firstPage, err := client.Emails.ListWithOptions(ctx, &resend.ListOptions{
+        Limit: &limit,
+    })
+    if err != nil {
+        panic(err)
+    }
+
+    // Get next page
+    if firstPage.HasMore && len(firstPage.Data) > 0 {
+        lastEmailID := firstPage.Data[len(firstPage.Data)-1].Id
+        
+        nextPage, err := client.Emails.ListWithOptions(ctx, &resend.ListOptions{
+            Limit: &limit,
+            After: &lastEmailID,
+        })
+        if err != nil {
+            panic(err)
+        }
+        
+        fmt.Printf("Next page: %d emails\n", len(nextPage.Data))
+    }
+    ```
+  </Tab>
+</Tabs>
+
+Source: [examples/send_email.go:53](examples/send_email.go:53)
+
+## Error Handling
+
+Always check for errors when sending emails:
+
+```go
+params := &resend.SendEmailRequest{
+	To:      []string{"user@example.com"},
+	From:    "noreply@yourdomain.com",
+	Subject: "Test Email",
+	Text:    "This is a test.",
+}
+
+sent, err := client.Emails.Send(params)
+if err != nil {
+	// Handle rate limit errors
+	if errors.Is(err, resend.ErrRateLimit) {
+		if rateLimitErr, ok := err.(*resend.RateLimitError); ok {
+			fmt.Printf("Rate limit exceeded. Retry after: %s seconds\n", rateLimitErr.RetryAfter)
+		}
+		return
+	}
+	
+	// Handle other errors
+	fmt.Printf("Failed to send email: %v\n", err)
+	return
+}
+
+fmt.Printf("Email sent successfully: %s\n", sent.Id)
+```
+
+## Best Practices
+
+<Steps>
+  <Step title="Use Context">
+    Always use `SendWithContext` in production to enable timeout and cancellation control:
+    
+    ```go
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+    
+    sent, err := client.Emails.SendWithContext(ctx, params)
+    ```
+  </Step>
+  
+  <Step title="Provide Both Text and HTML">
+    Include both `Text` and `Html` versions for better email client compatibility:
+    
+    ```go
+    params := &resend.SendEmailRequest{
+        // ... other fields
+        Text: "Plain text version",
+        Html: "<p>HTML version</p>",
+    }
+    ```
+  </Step>
+  
+  <Step title="Use Idempotency Keys">
+    Use idempotency keys for critical transactional emails to prevent duplicates:
+    
+    ```go
+    options := &resend.SendEmailOptions{
+        IdempotencyKey: fmt.Sprintf("order-%s-confirmation", orderID),
+    }
+    ```
+  </Step>
+  
+  <Step title="Add Tags for Analytics">
+    Use tags to categorize emails for better analytics and reporting:
+    
+    ```go
+    Tags: []resend.Tag{
+        {Name: "category", Value: "transactional"},
+        {Name: "type", Value: "order_confirmation"},
+    }
+    ```
+  </Step>
+  
+  <Step title="Handle Rate Limits">
+    Implement proper error handling for rate limits with exponential backoff:
+    
+    ```go
+    if errors.Is(err, resend.ErrRateLimit) {
+        // Implement retry logic with backoff
+    }
+    ```
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Email Templates" icon="file-lines" href="/guides/email-templates">
+    Learn how to use reusable email templates
+  </Card>
+  
+  <Card title="Attachments" icon="paperclip" href="/guides/attachments">
+    Add file attachments to your emails
+  </Card>
+  
+  <Card title="Batch Emails" icon="envelopes-bulk" href="/guides/batch-emails">
+    Send multiple emails in a single request
+  </Card>
+  
+  <Card title="Scheduled Emails" icon="clock" href="/guides/scheduled-emails">
+    Schedule emails for future delivery
+  </Card>
+</CardGroup>

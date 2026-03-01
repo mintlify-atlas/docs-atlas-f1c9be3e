@@ -1,0 +1,79 @@
+---
+title: Delete Domain
+description: Remove a domain from your account
+---
+
+## Methods
+
+### Remove
+
+```go
+func (s *DomainsSvcImpl) Remove(domainId string) (bool, error)
+```
+
+Removes a domain from your account.
+
+### RemoveWithContext
+
+```go
+func (s *DomainsSvcImpl) RemoveWithContext(ctx context.Context, domainId string) (bool, error)
+```
+
+Removes a domain from your account with context support.
+
+## Parameters
+
+<ParamField path="domainId" type="string" required>
+  The unique identifier of the domain to delete
+</ParamField>
+
+## Response
+
+<ResponseField name="deleted" type="bool">
+  Returns `true` if the domain was successfully deleted
+</ResponseField>
+
+## Example
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    deleted, err := client.Domains.Remove("d1e9e6f7-6a1c-4b3d-8c9e-1f2e3d4c5b6a")
+    if err != nil {
+        panic(err)
+    }
+
+    if deleted {
+        fmt.Println("Domain successfully deleted")
+    }
+}
+```
+
+## Example with Context
+
+```go
+ctx := context.Background()
+
+deleted, err := client.Domains.RemoveWithContext(ctx, "d1e9e6f7-6a1c-4b3d-8c9e-1f2e3d4c5b6a")
+if err != nil {
+    panic(err)
+}
+
+if deleted {
+    fmt.Println("Domain deleted")
+}
+```
+
+## Notes
+
+- Once deleted, you will no longer be able to send emails from this domain
+- DNS records can remain in your DNS configuration but will no longer be used by Resend
+- This action cannot be undone - you will need to re-add and re-verify the domain if you want to use it again

@@ -1,0 +1,457 @@
+---
+title: Email Templates
+description: Create, manage, and use email templates with the Resend Go SDK
+---
+
+Email templates allow you to create reusable email designs with dynamic variables. This guide covers the complete template workflow.
+
+## Create a Template
+
+<Steps>
+  <Step title="Create a basic template">
+    Start by creating a simple template without variables:
+
+    ```go
+    ctx := context.TODO()
+    client := resend.NewClient(apiKey)
+
+    template, err := client.Templates.CreateWithContext(ctx, &resend.CreateTemplateRequest{
+    	Name: "welcome-email",
+    	Html: "<strong>Welcome to our service!</strong>",
+    })
+    if err != nil {
+    	panic(err)
+    }
+    fmt.Printf("Created template: %s\n", template.Id)
+    ```
+  </Step>
+
+  <Step title="Add dynamic variables">
+    Create a template with variables for personalization:
+
+    ```go
+    template, err := client.Templates.Create(&resend.CreateTemplateRequest{
+    	Name:    "user-notification",
+    	From:    "notifications@example.com",
+    	Subject: "Hello {{{NAME}}}",
+    	Html:    "<strong>Hey, {{{NAME}}}, you are {{{AGE}}} years old.</strong>",
+    	Variables: []*resend.TemplateVariable{
+    		{
+    			Key:           "NAME",
+    			Type:          resend.VariableTypeString,
+    			FallbackValue: "user",
+    		},
+    		{
+    			Key:           "AGE",
+    			Type:          resend.VariableTypeNumber,
+    			FallbackValue: 25,
+    		},
+    	},
+    })
+    if err != nil {
+    	panic(err)
+    }
+    fmt.Printf("Created template: %s\n", template.Id)
+    ```
+
+    <Warning>
+    All variables used in your HTML (e.g., `{{{NAME}}}`, `{{{AGE}}}`) **must** be declared in the `Variables` array. Otherwise, the API will return an error:
+    
+    `Variable 'NAME' is used in the template but not defined in the variables list`
+    </Warning>
+  </Step>
+
+  <Step title="Create with all options">
+    Use all available template fields:
+
+    ```go
+    template, err := client.Templates.Create(&resend.CreateTemplateRequest{
+    	Name:    "full-template-example",
+    	Alias:   "full-example",
+    	From:    "Team <team@example.com>",
+    	Subject: "Important Update for {{{NAME}}}",
+    	ReplyTo: []string{"support@example.com", "help@example.com"},
+    	Html:    "<h1>Hello {{{NAME}}}</h1><p>You have {{{COUNT}}} new messages.</p>",
+    	Text:    "Hello {{{NAME}}}\nYou have {{{COUNT}}} new messages.",
+    	Variables: []*resend.TemplateVariable{
+    		{
+    			Key:           "NAME",
+    			Type:          resend.VariableTypeString,
+    			FallbackValue: "Guest",
+    		},
+    		{
+    			Key:           "COUNT",
+    			Type:          resend.VariableTypeNumber,
+    			FallbackValue: 0,
+    		},
+    	},
+    })
+    ```
+  </Step>
+</Steps>
+
+## Variable Types
+
+Resend supports two variable types:
+
+<CodeGroup>
+
+```go String Variables
+{
+	Key:           "USERNAME",
+	Type:          resend.VariableTypeString,
+	FallbackValue: "Guest", // Optional default value
+}
+```
+
+```go Number Variables
+{
+	Key:           "MESSAGE_COUNT",
+	Type:          resend.VariableTypeNumber,
+	FallbackValue: 0, // Optional default value
+}
+```
+
+```go Optional Variables
+{
+	Key:  "OPTIONAL_FIELD",
+	Type: resend.VariableTypeString,
+	// No fallback value - will use empty string if not provided
+}
+```
+
+</CodeGroup>
+
+## Update a Template
+
+Modify an existing template:
+
+```go
+updatedTemplate, err := client.Templates.UpdateWithContext(ctx, templateId, &resend.UpdateTemplateRequest{
+	Name:    "welcome-email-updated",
+	Html:    "<strong>Welcome to our updated service, {{{NAME}}}!</strong>",
+	Subject: "Welcome {{{NAME}}}!",
+	Variables: []*resend.TemplateVariable{
+		{
+			Key:           "NAME",
+			Type:          resend.VariableTypeString,
+			FallbackValue: "Guest",
+		},
+	},
+})
+if err != nil {
+	panic(err)
+}
+fmt.Printf("Updated template: %s\n", updatedTemplate.Id)
+```
+
+## Publish a Template
+
+Templates must be published before they can be used to send emails:
+
+```go
+publishedTemplate, err := client.Templates.PublishWithContext(ctx, templateId)
+if err != nil {
+	panic(err)
+}
+fmt.Printf("Published template: %s\n", publishedTemplate.Id)
+
+// Verify the template is published
+publishedCheck, err := client.Templates.Get(publishedTemplate.Id)
+if err != nil {
+	panic(err)
+}
+fmt.Printf("Status: %s\n", publishedCheck.Status)
+fmt.Printf("Published at: %s\n", publishedCheck.PublishedAt)
+```
+
+<Note>
+Only published templates can be used to send emails. Draft templates will result in an error.
+</Note>
+
+## Send Email with Template
+
+Once published, use your template to send emails:
+
+<Tabs>
+  <Tab title="By Template ID">
+    ```go
+    emailParams := &resend.SendEmailRequest{
+    	To: []string{"delivered@resend.dev"},
+    	Template: &resend.EmailTemplate{
+    		Id: templateId,
+    		Variables: map[string]any{
+    			"NAME":         "Alice Johnson",
+    			"companyName":  "Acme Corporation",
+    			"messageCount": 12,
+    		},
+    	},
+    }
+
+    sent, err := client.Emails.SendWithContext(ctx, emailParams)
+    if err != nil {
+    	panic(err)
+    }
+    fmt.Printf("Sent email: %s\n", sent.Id)
+    ```
+  </Tab>
+  <Tab title="By Template Alias">
+    ```go
+    // If your template has an alias (e.g., "welcome")
+    emailParams := &resend.SendEmailRequest{
+    	To: []string{"delivered@resend.dev"},
+    	Template: &resend.EmailTemplate{
+    		Id: "welcome", // Using alias instead of ID
+    		Variables: map[string]any{
+    			"NAME":         "Bob Smith",
+    			"companyName":  "Tech Startup Inc",
+    			"messageCount": 3,
+    		},
+    	},
+    }
+
+    sent, err := client.Emails.SendWithContext(ctx, emailParams)
+    ```
+  </Tab>
+  <Tab title="With Field Overrides">
+    ```go
+    // Override template fields for specific sends
+    emailParams := &resend.SendEmailRequest{
+    	From:    "support@resend.dev", // Override template's From
+    	To:      []string{"delivered@resend.dev"},
+    	Subject: "Custom Subject Override", // Override template's Subject
+    	Bcc:     []string{"bcc@example.com"},
+    	ReplyTo: "noreply@resend.dev",
+    	Template: &resend.EmailTemplate{
+    		Id: templateId,
+    		Variables: map[string]any{
+    			"NAME":         "Charlie Brown",
+    			"companyName":  "Example LLC",
+    			"messageCount": 7,
+    		},
+    	},
+    }
+
+    sent, err := client.Emails.SendWithContext(ctx, emailParams)
+    ```
+  </Tab>
+</Tabs>
+
+## Retrieve Template Details
+
+Get information about a template:
+
+<CodeGroup>
+
+```go By ID
+template, err := client.Templates.GetWithContext(ctx, templateId)
+if err != nil {
+	panic(err)
+}
+
+fmt.Printf("Id: %s\n", template.Id)
+fmt.Printf("Name: %s\n", template.Name)
+fmt.Printf("Status: %s\n", template.Status)
+fmt.Printf("Variables: %d\n", len(template.Variables))
+```
+
+```go By Alias
+// Use alias instead of ID if one was set
+template, err := client.Templates.Get("welcome")
+if err != nil {
+	panic(err)
+}
+fmt.Printf("Template: %s (Status: %s)\n", template.Name, template.Status)
+```
+
+</CodeGroup>
+
+## List Templates
+
+Retrieve all templates with pagination:
+
+<Tabs>
+  <Tab title="Basic List">
+    ```go
+    listResponse, err := client.Templates.ListWithContext(ctx, nil)
+    if err != nil {
+    	panic(err)
+    }
+
+    fmt.Printf("HasMore: %t\n", listResponse.HasMore)
+    fmt.Printf("Templates count: %d\n", len(listResponse.Data))
+
+    for _, tmpl := range listResponse.Data {
+    	fmt.Printf("- %s (%s) - Status: %s\n",
+    		tmpl.Name, tmpl.Id, tmpl.Status)
+    }
+    ```
+  </Tab>
+  <Tab title="With Pagination">
+    ```go
+    limit := 10
+    listResponse, err := client.Templates.ListWithContext(ctx, &resend.ListOptions{
+    	Limit: &limit,
+    })
+    if err != nil {
+    	panic(err)
+    }
+
+    // Get next page if available
+    if listResponse.HasMore && len(listResponse.Data) > 0 {
+    	lastId := listResponse.Data[len(listResponse.Data)-1].Id
+    	nextPage, err := client.Templates.List(&resend.ListOptions{
+    		Limit: &limit,
+    		After: &lastId,
+    	})
+    	if err != nil {
+    		panic(err)
+    	}
+    	fmt.Printf("Next page templates: %d\n", len(nextPage.Data))
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Duplicate a Template
+
+Create a copy of an existing template:
+
+```go
+duplicatedTemplate, err := client.Templates.DuplicateWithContext(ctx, templateId)
+if err != nil {
+	panic(err)
+}
+fmt.Printf("Duplicated template: %s\n", duplicatedTemplate.Id)
+
+// The duplicate is a separate template with its own ID
+duplicateCheck, err := client.Templates.Get(duplicatedTemplate.Id)
+if err != nil {
+	panic(err)
+}
+fmt.Printf("Duplicate details: %s (Status: %s)\n",
+	duplicateCheck.Name, duplicateCheck.Status)
+```
+
+## Delete a Template
+
+Permanently remove a template:
+
+```go
+removedTemplate, err := client.Templates.RemoveWithContext(ctx, templateId)
+if err != nil {
+	panic(err)
+}
+fmt.Printf("Removed template: %s\n", removedTemplate.Id)
+fmt.Printf("Deleted: %t\n", removedTemplate.Deleted)
+```
+
+<Warning>
+Deleting a template is permanent and cannot be undone. Any emails currently using this template will fail.
+</Warning>
+
+## Complete Example
+
+Here's a complete workflow from [examples/send_email_with_template.go](https://github.com/resend/resend-go/blob/main/examples/send_email_with_template.go):
+
+```go examples/send_email_with_template.go
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	ctx := context.TODO()
+	apiKey := os.Getenv("RESEND_API_KEY")
+	client := resend.NewClient(apiKey)
+
+	// Step 1: Create template with variables
+	templateParams := &resend.CreateTemplateRequest{
+		Name:    "user-welcome-template",
+		Alias:   "welcome",
+		From:    "onboarding@resend.dev",
+		Subject: "Welcome to {{{companyName}}}, {{{userName}}}!",
+		Html: `
+		<html>
+			<body>
+				<h1>Hello {{{userName}}}!</h1>
+				<p>Welcome to {{{companyName}}}. We're excited to have you on board.</p>
+				<p>You currently have {{{messageCount}}} unread messages waiting for you.</p>
+			</body>
+		</html>
+		`,
+		Text: "Hello {{{userName}}}! Welcome to {{{companyName}}}.",
+		Variables: []*resend.TemplateVariable{
+			{
+				Key:           "userName",
+				Type:          resend.VariableTypeString,
+				FallbackValue: "User",
+			},
+			{
+				Key:           "companyName",
+				Type:          resend.VariableTypeString,
+				FallbackValue: "Our Company",
+			},
+			{
+				Key:           "messageCount",
+				Type:          resend.VariableTypeNumber,
+				FallbackValue: 0,
+			},
+		},
+	}
+
+	template, err := client.Templates.CreateWithContext(ctx, templateParams)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Created template: %s\n", template.Id)
+
+	// Step 2: Publish the template
+	_, err = client.Templates.PublishWithContext(ctx, template.Id)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Published template: %s\n", template.Id)
+
+	// Step 3: Send email using the template
+	emailParams := &resend.SendEmailRequest{
+		To: []string{"delivered@resend.dev"},
+		Template: &resend.EmailTemplate{
+			Id: template.Id,
+			Variables: map[string]any{
+				"userName":     "Alice Johnson",
+				"companyName":  "Acme Corporation",
+				"messageCount": 12,
+			},
+		},
+	}
+
+	sent, err := client.Emails.SendWithContext(ctx, emailParams)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Sent email: %s\n", sent.Id)
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Basic Usage" icon="envelope" href="/examples/basic-usage">
+    Learn the fundamentals of sending emails
+  </Card>
+  <Card title="Error Handling" icon="triangle-exclamation" href="/examples/error-handling">
+    Handle rate limits and validation errors
+  </Card>
+  <Card title="Templates API" icon="book" href="/api-reference/templates/create">
+    View complete Templates API reference
+  </Card>
+  <Card title="Batch Emails" icon="envelopes-bulk" href="/examples/batch-emails">
+    Send multiple emails efficiently
+  </Card>
+</CardGroup>

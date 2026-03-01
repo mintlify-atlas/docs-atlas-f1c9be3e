@@ -1,0 +1,336 @@
+---
+title: 'Email Attachments'
+description: 'Retrieve and list email attachments using the Resend Go SDK'
+---
+
+## GetAttachment
+
+Retrieves a single attachment from a sent email.
+
+```go
+func (s *EmailsSvcImpl) GetAttachment(emailId string, attachmentId string) (*EmailAttachment, error)
+```
+
+### Parameters
+
+<ParamField path="emailId" type="string" required>
+  The unique identifier of the email.
+</ParamField>
+
+<ParamField path="attachmentId" type="string" required>
+  The unique identifier of the attachment.
+</ParamField>
+
+### Returns
+
+<ResponseField name="response" type="*EmailAttachment">
+  <Expandable title="EmailAttachment fields">
+    <ResponseField name="Object" type="string">
+      The object type ("attachment"). Only included when retrieving a single attachment.
+    </ResponseField>
+    
+    <ResponseField name="Id" type="string">
+      The unique identifier of the attachment.
+    </ResponseField>
+    
+    <ResponseField name="Filename" type="string">
+      The filename of the attachment.
+    </ResponseField>
+    
+    <ResponseField name="ContentType" type="string">
+      The MIME type of the attachment (e.g., "application/pdf").
+    </ResponseField>
+    
+    <ResponseField name="ContentDisposition" type="string">
+      How the attachment should be displayed ("attachment" or "inline").
+    </ResponseField>
+    
+    <ResponseField name="ContentId" type="string">
+      Content ID for inline attachments. Used with `cid:` prefix in HTML.
+    </ResponseField>
+    
+    <ResponseField name="DownloadUrl" type="string">
+      Temporary URL to download the attachment.
+    </ResponseField>
+    
+    <ResponseField name="ExpiresAt" type="string">
+      Timestamp when the download URL expires.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	client := resend.NewClient("re_123456789")
+
+	attachment, err := client.Emails.GetAttachment(
+		"4ef9a417-02e9-4d39-ad75-9611e0fcc33c",
+		"dh3m14y0-njhb-4079-a1c2-1ec49a5bc857",
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Attachment: %s (%s)\n", attachment.Filename, attachment.ContentType)
+	fmt.Printf("Download URL: %s\n", attachment.DownloadUrl)
+	fmt.Printf("Expires At: %s\n", attachment.ExpiresAt)
+}
+```
+
+---
+
+## GetAttachmentWithContext
+
+Retrieves a single attachment from a sent email with context.
+
+```go
+func (s *EmailsSvcImpl) GetAttachmentWithContext(ctx context.Context, emailId string, attachmentId string) (*EmailAttachment, error)
+```
+
+### Parameters
+
+<ParamField path="ctx" type="context.Context" required>
+  Context for the request.
+</ParamField>
+
+<ParamField path="emailId" type="string" required>
+  The unique identifier of the email.
+</ParamField>
+
+<ParamField path="attachmentId" type="string" required>
+  The unique identifier of the attachment.
+</ParamField>
+
+### Returns
+
+<ResponseField name="response" type="*EmailAttachment">
+  See [GetAttachment](#getattachment) for response field details.
+</ResponseField>
+
+### Example
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	ctx := context.Background()
+	client := resend.NewClient("re_123456789")
+
+	attachment, err := client.Emails.GetAttachmentWithContext(
+		ctx,
+		"4ef9a417-02e9-4d39-ad75-9611e0fcc33c",
+		"dh3m14y0-njhb-4079-a1c2-1ec49a5bc857",
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Attachment: %s\n", attachment.Filename)
+}
+```
+
+---
+
+## ListAttachments
+
+Retrieves a list of attachments for a sent email.
+
+```go
+func (s *EmailsSvcImpl) ListAttachments(emailId string) (ListEmailAttachmentsResponse, error)
+```
+
+### Parameters
+
+<ParamField path="emailId" type="string" required>
+  The unique identifier of the email.
+</ParamField>
+
+### Returns
+
+<ResponseField name="response" type="ListEmailAttachmentsResponse">
+  <Expandable title="ListEmailAttachmentsResponse fields">
+    <ResponseField name="Object" type="string">
+      The object type ("list").
+    </ResponseField>
+    
+    <ResponseField name="HasMore" type="bool">
+      Indicates whether there are more attachments available beyond this page.
+    </ResponseField>
+    
+    <ResponseField name="Data" type="[]EmailAttachment">
+      Array of attachment objects. See [GetAttachment](#getattachment) for EmailAttachment field details. Note: The `Object` field is omitted in list responses.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	client := resend.NewClient("re_123456789")
+
+	attachments, err := client.Emails.ListAttachments("4ef9a417-02e9-4d39-ad75-9611e0fcc33c")
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Found %d attachments\n", len(attachments.Data))
+	for _, att := range attachments.Data {
+		fmt.Printf("- ID: %s, Filename: %s, ContentType: %s\n",
+			att.Id, att.Filename, att.ContentType)
+	}
+}
+```
+
+---
+
+## ListAttachmentsWithContext
+
+Retrieves a list of attachments for a sent email with context.
+
+```go
+func (s *EmailsSvcImpl) ListAttachmentsWithContext(ctx context.Context, emailId string) (ListEmailAttachmentsResponse, error)
+```
+
+### Parameters
+
+<ParamField path="ctx" type="context.Context" required>
+  Context for the request.
+</ParamField>
+
+<ParamField path="emailId" type="string" required>
+  The unique identifier of the email.
+</ParamField>
+
+### Returns
+
+<ResponseField name="response" type="ListEmailAttachmentsResponse">
+  See [ListAttachments](#listattachments) for response field details.
+</ResponseField>
+
+### Example
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	ctx := context.Background()
+	client := resend.NewClient("re_123456789")
+
+	attachments, err := client.Emails.ListAttachmentsWithContext(
+		ctx,
+		"4ef9a417-02e9-4d39-ad75-9611e0fcc33c",
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Found %d attachments\n", len(attachments.Data))
+}
+```
+
+---
+
+## ListAttachmentsWithOptions
+
+Retrieves a list of attachments for a sent email with pagination options.
+
+```go
+func (s *EmailsSvcImpl) ListAttachmentsWithOptions(ctx context.Context, emailId string, options *ListOptions) (ListEmailAttachmentsResponse, error)
+```
+
+### Parameters
+
+<ParamField path="ctx" type="context.Context" required>
+  Context for the request.
+</ParamField>
+
+<ParamField path="emailId" type="string" required>
+  The unique identifier of the email.
+</ParamField>
+
+<ParamField path="options" type="*ListOptions">
+  Pagination options for the list request.
+  
+  <Expandable title="ListOptions fields">
+    <ParamField path="Limit" type="*int">
+      Maximum number of attachments to return. Must be a pointer to an integer.
+    </ParamField>
+    
+    <ParamField path="After" type="*string">
+      Cursor for forward pagination. Returns attachments after this attachment ID. Must be a pointer to a string.
+    </ParamField>
+    
+    <ParamField path="Before" type="*string">
+      Cursor for backward pagination. Returns attachments before this attachment ID. Must be a pointer to a string.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="response" type="ListEmailAttachmentsResponse">
+  See [ListAttachments](#listattachments) for response field details.
+</ResponseField>
+
+### Example
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	ctx := context.Background()
+	client := resend.NewClient("re_123456789")
+
+	limit := 10
+	listOptions := &resend.ListOptions{
+		Limit: &limit,
+	}
+
+	attachments, err := client.Emails.ListAttachmentsWithOptions(
+		ctx,
+		"4ef9a417-02e9-4d39-ad75-9611e0fcc33c",
+		listOptions,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Found %d attachments (limit: %d)\n", len(attachments.Data), limit)
+	fmt.Printf("Has more: %v\n", attachments.HasMore)
+}
+```

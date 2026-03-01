@@ -1,0 +1,70 @@
+---
+title: 'Create segment'
+description: 'Create a new segment to organize your audience.'
+---
+
+Creates a new segment entry based on the provided parameters.
+
+## Methods
+
+### Create
+
+```go
+Create(params *CreateSegmentRequest) (CreateSegmentResponse, error)
+```
+
+Creates a segment using the default background context.
+
+### CreateWithContext
+
+```go
+CreateWithContext(ctx context.Context, params *CreateSegmentRequest) (CreateSegmentResponse, error)
+```
+
+Creates a segment with a custom context for cancellation and timeout control.
+
+## Request
+
+<ParamField body="name" type="string" required>
+  The name of the segment.
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  The unique identifier for the created segment.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The name of the segment.
+</ResponseField>
+
+<ResponseField name="object" type="string">
+  The object type, always `segment`.
+</ResponseField>
+
+## Example
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    params := &resend.CreateSegmentRequest{
+        Name: "My Segment",
+    }
+
+    segment, err := client.Segments.Create(params)
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("Segment ID:", segment.Id)
+}
+```

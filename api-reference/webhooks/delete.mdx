@@ -1,0 +1,46 @@
+---
+title: Delete Webhook
+description: Remove a webhook by ID.
+---
+
+## Method
+
+```go
+func (s *WebhooksSvcImpl) Remove(webhookId string) (*DeleteWebhookResponse, error)
+func (s *WebhooksSvcImpl) RemoveWithContext(ctx context.Context, webhookId string) (*DeleteWebhookResponse, error)
+```
+
+## Parameters
+
+<ParamField path="webhookId" type="string" required>
+  The unique identifier of the webhook to delete
+</ParamField>
+
+## Response
+
+<ResponseField name="Object" type="string">
+  Always `"webhook"`
+</ResponseField>
+
+<ResponseField name="Id" type="string">
+  The unique identifier of the deleted webhook
+</ResponseField>
+
+<ResponseField name="Deleted" type="bool">
+  Whether the webhook was successfully deleted
+</ResponseField>
+
+## Example
+
+```go
+client := resend.NewClient("re_123456789")
+
+response, err := client.Webhooks.Remove("wh_abc123")
+if err != nil {
+    panic(err)
+}
+
+if response.Deleted {
+    fmt.Println("Webhook deleted successfully")
+}
+```

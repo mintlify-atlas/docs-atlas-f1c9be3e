@@ -1,0 +1,573 @@
+---
+title: 'Batch Emails'
+description: 'Send multiple emails in a single API request'
+---
+
+The Resend Go SDK allows you to send multiple emails in a single batch request with support for strict or permissive validation modes.
+
+## Quick Start
+
+Here's how to send a batch of emails:
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	ctx := context.Background()
+	apiKey := os.Getenv("RESEND_API_KEY")
+
+	client := resend.NewClient(apiKey)
+
+	// Create batch of emails
+	batchEmails := []*resend.SendEmailRequest{
+		{
+			To:      []string{"user1@example.com"},
+			From:    "noreply@yourdomain.com",
+			Subject: "Welcome!",
+			Text:    "Welcome to our platform",
+		},
+		{
+			To:      []string{"user2@example.com"},
+			From:    "noreply@yourdomain.com",
+			Subject: "Hello!",
+			Text:    "Thanks for joining",
+		},
+	}
+
+	// Send batch
+	sent, err := client.Batch.SendWithContext(ctx, batchEmails)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Sent %d emails\n", len(sent.Data))
+	for _, email := range sent.Data {
+		fmt.Printf("Email ID: %s\n", email.Id)
+	}
+}
+```
+
+## Batch Send Methods
+
+The SDK provides three methods for sending batch emails:
+
+<CodeGroup>
+
+```go Send
+// Simple send without context
+sent, err := client.Batch.Send(batchEmails)
+if err != nil {
+	panic(err)
+}
+```
+
+```go SendWithContext
+// Send with context for timeout/cancellation control
+ctx := context.TODO()
+sent, err := client.Batch.SendWithContext(ctx, batchEmails)
+if err != nil {
+	panic(err)
+}
+```
+
+```go SendWithOptions
+// Send with additional options
+ctx := context.TODO()
+options := &resend.BatchSendEmailOptions{
+	IdempotencyKey:  "unique-batch-key",
+	BatchValidation: resend.BatchValidationPermissive,
+}
+
+sent, err := client.Batch.SendWithOptions(ctx, batchEmails, options)
+if err != nil {
+	panic(err)
+}
+```
+
+</CodeGroup>
+
+Source: [batch.go:73](batch.go:73)
+
+## Batch Validation Modes
+
+The SDK supports two validation modes for batch email sending:
+
+### Strict Mode (Default)
+
+In strict mode, the entire batch fails if any email has validation errors:
+
+```go
+ctx := context.Background()
+
+batchEmails := []*resend.SendEmailRequest{
+	{
+		To:      []string{"user@example.com"},
+		From:    "noreply@yourdomain.com",
+		Subject: "Valid email",
+		Text:    "This is valid",
+	},
+	{
+		To:      []string{}, // Invalid - missing recipient
+		From:    "noreply@yourdomain.com",
+		Subject: "Invalid email",
+		Text:    "This will cause the entire batch to fail",
+	},
+}
+
+// Strict mode is the default
+options := &resend.BatchSendEmailOptions{
+	BatchValidation: resend.BatchValidationStrict,
+}
+
+sent, err := client.Batch.SendWithOptions(ctx, batchEmails, options)
+if err != nil {
+	// Entire batch failed - no emails sent
+	fmt.Printf("Batch failed: %v\n", err)
+}
+```
+
+Source: [batch.go:13](batch.go:13)
+
+<Note>
+  Use strict mode when all emails in the batch must be sent together (all-or-nothing behavior).
+</Note>
+
+### Permissive Mode
+
+In permissive mode, valid emails are sent even if some emails in the batch have errors:
+
+```go
+ctx := context.Background()
+
+batchEmails := []*resend.SendEmailRequest{
+	{
+		To:      []string{"delivered@resend.dev"},
+		From:    "onboarding@resend.dev",
+		Subject: "Valid email",
+		Text:    "This email is valid",
+	},
+	{
+		To:      []string{}, // Missing 'to' field - will fail
+		From:    "onboarding@resend.dev",
+		Subject: "Invalid email",
+		Text:    "This email has no recipient",
+	},
+	{
+		To:      []string{"another@resend.dev"},
+		From:    "onboarding@resend.dev",
+		Subject: "Another valid email",
+		Text:    "This email is also valid",
+	},
+}
+
+options := &resend.BatchSendEmailOptions{
+	BatchValidation: resend.BatchValidationPermissive,
+}
+
+sent, err := client.Batch.SendWithOptions(ctx, batchEmails, options)
+if err != nil {
+	panic(err)
+}
+
+fmt.Printf("Successfully sent %d emails\n", len(sent.Data))
+for _, email := range sent.Data {
+	fmt.Printf("  - Email ID: %s\n", email.Id)
+}
+
+if len(sent.Errors) > 0 {
+	fmt.Printf("Failed to send %d emails:\n", len(sent.Errors))
+	for _, batchErr := range sent.Errors {
+		fmt.Printf("  - Index %d: %s\n", batchErr.Index, batchErr.Message)
+	}
+}
+```
+
+Source: [examples/send_batch_email.go:53](examples/send_batch_email.go:53)
+
+<Tip>
+  Use permissive mode when you want partial success - valid emails will be sent regardless of invalid ones in the batch.
+</Tip>
+
+Source: [batch.go:16](batch.go:16)
+
+## BatchSendEmailOptions
+
+The `BatchSendEmailOptions` struct supports the following fields:
+
+<ParamField path="idempotencyKey" type="string">
+  Unique key to prevent duplicate batch sends. Valid for 24 hours.
+</ParamField>
+
+<ParamField path="batchValidation" type="BatchValidationMode">
+  Validation mode: `BatchValidationStrict` (default) or `BatchValidationPermissive`.
+  
+  - **Strict**: All emails must be valid or entire batch fails
+  - **Permissive**: Valid emails are sent, invalid ones are reported in errors
+</ParamField>
+
+Source: [batch.go:29](batch.go:29)
+
+## BatchEmailResponse
+
+The response from a batch send includes:
+
+<ParamField path="data" type="[]SendEmailResponse">
+  Array of successfully sent emails with their IDs.
+</ParamField>
+
+<ParamField path="errors" type="[]BatchError">
+  Array of errors for emails that failed validation (only in permissive mode).
+</ParamField>
+
+Source: [batch.go:58](batch.go:58)
+
+## Handling BatchErrors
+
+In permissive mode, failed emails are reported in the `Errors` field:
+
+```go
+sent, err := client.Batch.SendWithOptions(ctx, batchEmails, &resend.BatchSendEmailOptions{
+	BatchValidation: resend.BatchValidationPermissive,
+})
+if err != nil {
+	panic(err)
+}
+
+// Check for partial failures
+if len(sent.Errors) > 0 {
+	fmt.Printf("Warning: %d emails failed to send:\n", len(sent.Errors))
+	
+	for _, batchErr := range sent.Errors {
+		// Index corresponds to position in original batch array
+		failedEmail := batchEmails[batchErr.Index]
+		
+		fmt.Printf("Failed email to %v:\n", failedEmail.To)
+		fmt.Printf("  Error: %s\n", batchErr.Message)
+		fmt.Printf("  Index: %d\n", batchErr.Index)
+	}
+}
+
+// Process successful emails
+fmt.Printf("Successfully sent %d emails\n", len(sent.Data))
+```
+
+### BatchError Struct
+
+<ParamField path="index" type="int">
+  Zero-based index of the failed email in the original batch array.
+</ParamField>
+
+<ParamField path="message" type="string">
+  Error message describing why the email failed validation.
+</ParamField>
+
+Source: [batch.go:51](batch.go:51)
+
+## Using Idempotency Keys
+
+Prevent duplicate batch sends with idempotency keys:
+
+```go
+ctx := context.Background()
+
+batchEmails := []*resend.SendEmailRequest{
+	{
+		To:      []string{"user@example.com"},
+		From:    "noreply@yourdomain.com",
+		Subject: "Order Confirmation",
+		Text:    "Your order has been confirmed.",
+	},
+}
+
+options := &resend.BatchSendEmailOptions{
+	IdempotencyKey: "order-batch-12345",
+}
+
+// First request sends the emails
+sent, err := client.Batch.SendWithOptions(ctx, batchEmails, options)
+if err != nil {
+	panic(err)
+}
+
+// Second request with same key returns the same response without sending duplicates
+sent2, err := client.Batch.SendWithOptions(ctx, batchEmails, options)
+// sent2 will have the same email IDs as sent
+```
+
+Source: [examples/send_batch_email.go:42](examples/send_batch_email.go:42)
+
+<Note>
+  Idempotency keys are valid for 24 hours. After that, the same key can be reused.
+</Note>
+
+## Common Use Cases
+
+<AccordionGroup>
+  <Accordion title="Welcome Email Campaign">
+    ```go
+    // Send welcome emails to new users
+    var batchEmails []*resend.SendEmailRequest
+    
+    for _, user := range newUsers {
+        batchEmails = append(batchEmails, &resend.SendEmailRequest{
+            To:      []string{user.Email},
+            From:    "welcome@yourdomain.com",
+            Subject: fmt.Sprintf("Welcome %s!", user.Name),
+            Html:    fmt.Sprintf("<h1>Welcome %s!</h1><p>Thanks for joining.</p>", user.Name),
+            Tags: []resend.Tag{
+                {Name: "campaign", Value: "welcome"},
+                {Name: "user_id", Value: user.ID},
+            },
+        })
+    }
+    
+    // Use permissive mode to ensure valid emails are sent
+    options := &resend.BatchSendEmailOptions{
+        BatchValidation: resend.BatchValidationPermissive,
+        IdempotencyKey:  fmt.Sprintf("welcome-batch-%s", time.Now().Format("2006-01-02")),
+    }
+    
+    sent, err := client.Batch.SendWithOptions(ctx, batchEmails, options)
+    ```
+  </Accordion>
+  
+  <Accordion title="Notification Broadcast">
+    ```go
+    // Send notification to all subscribers
+    var batchEmails []*resend.SendEmailRequest
+    
+    for _, subscriber := range subscribers {
+        batchEmails = append(batchEmails, &resend.SendEmailRequest{
+            To:      []string{subscriber.Email},
+            From:    "notifications@yourdomain.com",
+            Subject: "New Feature Released!",
+            Html:    "<p>We just released an exciting new feature...</p>",
+            Tags: []resend.Tag{
+                {Name: "type", Value: "notification"},
+                {Name: "subscriber_id", Value: subscriber.ID},
+            },
+        })
+    }
+    
+    // Use strict mode to ensure all or nothing
+    sent, err := client.Batch.SendWithContext(ctx, batchEmails)
+    ```
+  </Accordion>
+  
+  <Accordion title="Transactional Emails with Templates">
+    ```go
+    // Send order confirmations using template
+    var batchEmails []*resend.SendEmailRequest
+    
+    for _, order := range completedOrders {
+        batchEmails = append(batchEmails, &resend.SendEmailRequest{
+            To: []string{order.CustomerEmail},
+            Template: &resend.EmailTemplate{
+                Id: "order-confirmation",
+                Variables: map[string]any{
+                    "orderNumber": order.Number,
+                    "orderTotal":  order.Total,
+                    "customerName": order.CustomerName,
+                },
+            },
+            Tags: []resend.Tag{
+                {Name: "order_id", Value: order.ID},
+            },
+        })
+    }
+    
+    options := &resend.BatchSendEmailOptions{
+        BatchValidation: resend.BatchValidationPermissive,
+        IdempotencyKey:  fmt.Sprintf("orders-%s", batchID),
+    }
+    
+    sent, err := client.Batch.SendWithOptions(ctx, batchEmails, options)
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Processing Large Batches
+
+For large email lists, split them into smaller batches:
+
+```go
+func sendInBatches(ctx context.Context, client *resend.Client, emails []*resend.SendEmailRequest, batchSize int) error {
+	for i := 0; i < len(emails); i += batchSize {
+		end := i + batchSize
+		if end > len(emails) {
+			end = len(emails)
+		}
+		
+		batch := emails[i:end]
+		
+		options := &resend.BatchSendEmailOptions{
+			BatchValidation: resend.BatchValidationPermissive,
+			IdempotencyKey:  fmt.Sprintf("batch-%d", i),
+		}
+		
+		sent, err := client.Batch.SendWithOptions(ctx, batch, options)
+		if err != nil {
+			return fmt.Errorf("batch %d failed: %w", i/batchSize, err)
+		}
+		
+		fmt.Printf("Batch %d: sent %d, failed %d\n", 
+			i/batchSize, len(sent.Data), len(sent.Errors))
+		
+		// Optional: Add delay between batches to respect rate limits
+		time.Sleep(100 * time.Millisecond)
+	}
+	
+	return nil
+}
+
+// Usage
+emails := []*resend.SendEmailRequest{ /* ... */ }
+err := sendInBatches(ctx, client, emails, 100) // Send 100 emails per batch
+```
+
+<Tip>
+  Recommended batch size: 100-500 emails per request for optimal performance.
+</Tip>
+
+## Error Handling
+
+Handle both request errors and validation errors:
+
+```go
+sent, err := client.Batch.SendWithOptions(ctx, batchEmails, options)
+if err != nil {
+	// Handle rate limit errors
+	if errors.Is(err, resend.ErrRateLimit) {
+		if rateLimitErr, ok := err.(*resend.RateLimitError); ok {
+			fmt.Printf("Rate limit hit. Retry after: %s seconds\n", rateLimitErr.RetryAfter)
+			// Implement retry logic with backoff
+		}
+		return
+	}
+	
+	// Handle other errors
+	fmt.Printf("Batch send failed: %v\n", err)
+	return
+}
+
+// Check for validation errors (permissive mode)
+if len(sent.Errors) > 0 {
+	fmt.Printf("Partial success: %d succeeded, %d failed\n", 
+		len(sent.Data), len(sent.Errors))
+	
+	// Log failed emails for retry
+	for _, batchErr := range sent.Errors {
+		failedEmail := batchEmails[batchErr.Index]
+		log.Printf("Failed to send to %v: %s", failedEmail.To, batchErr.Message)
+	}
+}
+
+fmt.Printf("Successfully sent %d emails\n", len(sent.Data))
+```
+
+## Best Practices
+
+<Steps>
+  <Step title="Choose the Right Validation Mode">
+    Use strict mode for critical transactional emails where consistency matters:
+    
+    ```go
+    // Strict for order confirmations (all must succeed)
+    BatchValidation: resend.BatchValidationStrict
+    
+    // Permissive for marketing campaigns (partial success OK)
+    BatchValidation: resend.BatchValidationPermissive
+    ```
+  </Step>
+  
+  <Step title="Use Idempotency Keys">
+    Always use idempotency keys for batch sends to prevent duplicates on retry:
+    
+    ```go
+    IdempotencyKey: fmt.Sprintf("batch-%s-%d", campaignID, batchNumber)
+    ```
+  </Step>
+  
+  <Step title="Add Tags for Tracking">
+    Tag batch emails for better analytics and debugging:
+    
+    ```go
+    Tags: []resend.Tag{
+        {Name: "batch_id", Value: batchID},
+        {Name: "campaign", Value: campaignName},
+        {Name: "send_date", Value: time.Now().Format("2006-01-02")},
+    }
+    ```
+  </Step>
+  
+  <Step title="Handle Partial Failures">
+    In permissive mode, always check and log validation errors:
+    
+    ```go
+    if len(sent.Errors) > 0 {
+        // Log for retry or investigation
+        for _, err := range sent.Errors {
+            log.Printf("Email at index %d failed: %s", err.Index, err.Message)
+        }
+    }
+    ```
+  </Step>
+  
+  <Step title="Batch Size Optimization">
+    Keep batches to 100-500 emails for optimal performance:
+    
+    ```go
+    const batchSize = 250
+    // Split large lists into batches of 250
+    ```
+  </Step>
+  
+  <Step title="Rate Limit Awareness">
+    Add delays between batches if sending many batches in succession:
+    
+    ```go
+    time.Sleep(200 * time.Millisecond) // Brief pause between batches
+    ```
+  </Step>
+</Steps>
+
+## Validation Mode Comparison
+
+| Feature | Strict Mode | Permissive Mode |
+|---------|-------------|----------------|
+| **Behavior** | All-or-nothing | Partial success allowed |
+| **Default** | ✅ Yes | No |
+| **Use Case** | Critical transactional emails | Marketing campaigns |
+| **On Invalid Email** | Entire batch fails | Valid emails sent, errors reported |
+| **Response** | Error or all sent | Always includes Data and Errors arrays |
+| **Best For** | Order confirmations, invoices | Newsletters, welcome campaigns |
+
+Source: [batch.go:9](batch.go:9)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Sending Emails" icon="paper-plane" href="/guides/sending-emails">
+    Learn single email sending basics
+  </Card>
+  
+  <Card title="Email Templates" icon="file-lines" href="/guides/email-templates">
+    Use templates in batch emails
+  </Card>
+  
+  <Card title="Scheduled Emails" icon="clock" href="/guides/scheduled-emails">
+    Schedule batch emails for later
+  </Card>
+  
+  <Card title="Attachments" icon="paperclip" href="/guides/attachments">
+    Add attachments to batch emails
+  </Card>
+</CardGroup>

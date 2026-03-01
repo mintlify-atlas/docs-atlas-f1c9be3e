@@ -1,0 +1,720 @@
+---
+title: Webhooks
+description: Learn how to receive and verify webhook events from Resend with the Go SDK
+---
+
+Webhooks allow you to receive real-time notifications about email events in your application. This guide covers creating, managing, and verifying webhooks with the Resend Go SDK.
+
+## Overview
+
+Resend webhooks notify your application when events occur, such as:
+- Emails being sent, delivered, or bounced
+- Contacts being created, updated, or deleted  
+- Domains being created, updated, or deleted
+
+The Go SDK provides built-in webhook signature verification using HMAC-SHA256 to ensure webhook authenticity.
+
+## Webhook Events
+
+Resend supports the following webhook events:
+
+### Email Events
+
+<ParamField path="email.sent" type="string">
+  Triggered when an email is successfully accepted for delivery
+</ParamField>
+
+<ParamField path="email.delivered" type="string">
+  Triggered when an email is successfully delivered to the recipient's mail server
+</ParamField>
+
+<ParamField path="email.delivery_delayed" type="string">
+  Triggered when email delivery is temporarily delayed
+</ParamField>
+
+<ParamField path="email.complained" type="string">
+  Triggered when a recipient marks an email as spam
+</ParamField>
+
+<ParamField path="email.bounced" type="string">
+  Triggered when an email bounces (hard or soft bounce)
+</ParamField>
+
+<ParamField path="email.opened" type="string">
+  Triggered when a recipient opens an email (requires open tracking)
+</ParamField>
+
+<ParamField path="email.clicked" type="string">
+  Triggered when a recipient clicks a link in an email (requires click tracking)
+</ParamField>
+
+<ParamField path="email.received" type="string">
+  Triggered when an inbound email is received
+</ParamField>
+
+<ParamField path="email.failed" type="string">
+  Triggered when email sending fails
+</ParamField>
+
+### Contact Events
+
+<ParamField path="contact.created" type="string">
+  Triggered when a new contact is created
+</ParamField>
+
+<ParamField path="contact.updated" type="string">
+  Triggered when a contact is updated
+</ParamField>
+
+<ParamField path="contact.deleted" type="string">
+  Triggered when a contact is deleted
+</ParamField>
+
+### Domain Events
+
+<ParamField path="domain.created" type="string">
+  Triggered when a new domain is created
+</ParamField>
+
+<ParamField path="domain.updated" type="string">
+  Triggered when a domain is updated
+</ParamField>
+
+<ParamField path="domain.deleted" type="string">
+  Triggered when a domain is deleted
+</ParamField>
+
+## Creating a Webhook
+
+Create a webhook to start receiving events at your endpoint.
+
+<CodeGroup>
+```go Basic Webhook
+import (
+    "github.com/resend/resend-go/v3"
+)
+
+client := resend.NewClient("re_123456789")
+
+params := &resend.CreateWebhookRequest{
+    Endpoint: "https://your-app.com/webhooks/resend",
+    Events: []string{
+        resend.EventEmailSent,
+        resend.EventEmailDelivered,
+        resend.EventEmailBounced,
+    },
+}
+
+webhook, err := client.Webhooks.Create(params)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Webhook ID:", webhook.Id)
+fmt.Println("Signing Secret:", webhook.SigningSecret)
+```
+
+```go All Email Events
+params := &resend.CreateWebhookRequest{
+    Endpoint: "https://api.example.com/resend-webhook",
+    Events: []string{
+        resend.EventEmailSent,
+        resend.EventEmailDelivered,
+        resend.EventEmailDeliveryDelayed,
+        resend.EventEmailComplained,
+        resend.EventEmailBounced,
+        resend.EventEmailOpened,
+        resend.EventEmailClicked,
+        resend.EventEmailReceived,
+        resend.EventEmailFailed,
+    },
+}
+
+webhook, err := client.Webhooks.Create(params)
+```
+
+```go Contact and Domain Events
+params := &resend.CreateWebhookRequest{
+    Endpoint: "https://api.example.com/webhooks",
+    Events: []string{
+        resend.EventContactCreated,
+        resend.EventContactUpdated,
+        resend.EventContactDeleted,
+        resend.EventDomainCreated,
+        resend.EventDomainUpdated,
+        resend.EventDomainDeleted,
+    },
+}
+
+webhook, err := client.Webhooks.Create(params)
+```
+</CodeGroup>
+
+<Warning>
+  **Save the signing secret!** The `SigningSecret` is only returned when creating a webhook. Store it securely - you'll need it to verify webhook signatures.
+</Warning>
+
+## Retrieving a Webhook
+
+Get details about a specific webhook.
+
+```go Get Webhook
+webhook, err := client.Webhooks.Get("wh_123456")
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Status:", webhook.Status)
+fmt.Println("Endpoint:", webhook.Endpoint)
+fmt.Println("Events:", webhook.Events)
+fmt.Println("Created:", webhook.CreatedAt)
+```
+
+## Listing Webhooks
+
+Retrieve all webhooks in your account with optional pagination.
+
+<CodeGroup>
+```go List All Webhooks
+webhooks, err := client.Webhooks.List()
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("You have %d webhook(s)\n", len(webhooks.Data))
+
+for i, wh := range webhooks.Data {
+    fmt.Printf("[%d] %s - %s\n", i+1, wh.Id, wh.Status)
+    fmt.Printf("    Endpoint: %s\n", wh.Endpoint)
+    fmt.Printf("    Events: %v\n", wh.Events)
+}
+```
+
+```go With Pagination
+import "context"
+
+limit := 10
+options := &resend.ListOptions{
+    Limit: &limit,
+}
+
+webhooks, err := client.Webhooks.ListWithOptions(context.Background(), options)
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Retrieved %d webhooks\n", len(webhooks.Data))
+fmt.Printf("Has more: %v\n", webhooks.HasMore)
+```
+</CodeGroup>
+
+## Updating a Webhook
+
+Update webhook configuration including endpoint, events, and status.
+
+<CodeGroup>
+```go Update Endpoint
+newEndpoint := "https://new-api.example.com/webhook"
+
+updateParams := &resend.UpdateWebhookRequest{
+    Endpoint: &newEndpoint,
+}
+
+updated, err := client.Webhooks.Update("wh_123456", updateParams)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Updated webhook:", updated.Id)
+```
+
+```go Update Events
+updateParams := &resend.UpdateWebhookRequest{
+    Events: []string{
+        resend.EventEmailSent,
+        resend.EventEmailDelivered,
+    },
+}
+
+updated, err := client.Webhooks.Update("wh_123456", updateParams)
+```
+
+```go Disable Webhook
+status := "disabled"
+updateParams := &resend.UpdateWebhookRequest{
+    Status: &status,
+}
+
+updated, err := client.Webhooks.Update("wh_123456", updateParams)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Webhook disabled")
+```
+</CodeGroup>
+
+<Tip>
+  Disable webhooks temporarily instead of deleting them if you need to pause event notifications.
+</Tip>
+
+## Deleting a Webhook
+
+Remove a webhook from your account.
+
+```go Delete Webhook
+deleted, err := client.Webhooks.Remove("wh_123456")
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Webhook %s deleted: %v\n", deleted.Id, deleted.Deleted)
+```
+
+## Receiving and Verifying Webhooks
+
+Webhooks are sent as POST requests to your endpoint. Always verify webhook signatures to ensure they're from Resend.
+
+### Webhook Headers
+
+Resend includes three important headers with each webhook:
+
+<ParamField path="svix-id" type="string">
+  Unique identifier for the webhook message
+</ParamField>
+
+<ParamField path="svix-timestamp" type="string">
+  Unix timestamp when the webhook was sent
+</ParamField>
+
+<ParamField path="svix-signature" type="string">
+  HMAC-SHA256 signature for verifying authenticity
+</ParamField>
+
+### Verification Method
+
+The SDK provides a `Verify` method that implements HMAC-SHA256 signature verification:
+
+```go Webhook Receiver
+import (
+    "encoding/json"
+    "io"
+    "log"
+    "net/http"
+    
+    "github.com/resend/resend-go/v3"
+)
+
+func webhookHandler(client *resend.Client, webhookSecret string) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        // 1. Read the raw request body
+        body, err := io.ReadAll(r.Body)
+        if err != nil {
+            log.Printf("Error reading body: %v", err)
+            http.Error(w, "Failed to read request body", http.StatusBadRequest)
+            return
+        }
+        defer r.Body.Close()
+
+        // 2. Extract webhook headers
+        headers := resend.WebhookHeaders{
+            Id:        r.Header.Get("svix-id"),
+            Timestamp: r.Header.Get("svix-timestamp"),
+            Signature: r.Header.Get("svix-signature"),
+        }
+
+        // 3. Verify the webhook signature
+        err = client.Webhooks.Verify(&resend.VerifyWebhookOptions{
+            Payload:       string(body),
+            Headers:       headers,
+            WebhookSecret: webhookSecret,
+        })
+
+        if err != nil {
+            log.Printf("Webhook verification failed: %v", err)
+            http.Error(w, "Webhook verification failed", http.StatusBadRequest)
+            return
+        }
+
+        // 4. Parse the verified payload
+        var payload map[string]any
+        if err := json.Unmarshal(body, &payload); err != nil {
+            log.Printf("Error parsing JSON: %v", err)
+            http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+            return
+        }
+
+        // 5. Process the webhook event
+        eventType := payload["type"].(string)
+        log.Printf("✓ Verified webhook: %s", eventType)
+        
+        // Handle different event types
+        switch eventType {
+        case resend.EventEmailSent:
+            handleEmailSent(payload)
+        case resend.EventEmailDelivered:
+            handleEmailDelivered(payload)
+        case resend.EventEmailBounced:
+            handleEmailBounced(payload)
+        default:
+            log.Printf("Unhandled event type: %s", eventType)
+        }
+
+        // 6. Respond with success
+        w.WriteHeader(http.StatusOK)
+        json.NewEncoder(w).Encode(map[string]bool{"success": true})
+    }
+}
+```
+
+### How Verification Works
+
+The `Verify` method implements the following security checks:
+
+<Steps>
+  <Step title="Timestamp Validation">
+    Verifies the webhook timestamp is within 5 minutes to prevent replay attacks.
+    
+    ```go
+    // Checks if timestamp is within tolerance window
+    diff := now - timestamp
+    if diff > 300 seconds {
+        return error
+    }
+    ```
+  </Step>
+  
+  <Step title="Signature Construction">
+    Constructs the signed content from the webhook data:
+    
+    ```go
+    signedContent = "{id}.{timestamp}.{payload}"
+    ```
+  </Step>
+  
+  <Step title="HMAC-SHA256 Calculation">
+    Computes the expected signature using your webhook secret:
+    
+    ```go
+    h := hmac.New(sha256.New, decodedSecret)
+    h.Write([]byte(signedContent))
+    expectedSignature := base64.StdEncoding.EncodeToString(h.Sum(nil))
+    ```
+  </Step>
+  
+  <Step title="Constant-Time Comparison">
+    Safely compares signatures to prevent timing attacks:
+    
+    ```go
+    if subtle.ConstantTimeCompare(expected, received) == 1 {
+        return nil // Valid
+    }
+    ```
+  </Step>
+</Steps>
+
+## Complete HTTP Server Example
+
+Here's a complete example of a webhook receiver server:
+
+```go Webhook Server
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "io"
+    "log"
+    "net/http"
+    "os"
+    
+    "github.com/resend/resend-go/v3"
+)
+
+func main() {
+    webhookSecret := os.Getenv("RESEND_WEBHOOK_SECRET")
+    apiKey := os.Getenv("RESEND_API_KEY")
+    
+    client := resend.NewClient(apiKey)
+
+    http.HandleFunc("/webhook", func(w http.ResponseWriter, r *http.Request) {
+        if r.Method != http.MethodPost {
+            http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+            return
+        }
+
+        // Read raw body (required for signature verification)
+        body, err := io.ReadAll(r.Body)
+        if err != nil {
+            log.Printf("Error reading body: %v", err)
+            http.Error(w, "Failed to read request body", http.StatusBadRequest)
+            return
+        }
+        defer r.Body.Close()
+
+        // Extract Svix headers
+        headers := resend.WebhookHeaders{
+            Id:        r.Header.Get("svix-id"),
+            Timestamp: r.Header.Get("svix-timestamp"),
+            Signature: r.Header.Get("svix-signature"),
+        }
+
+        // Verify the webhook
+        err = client.Webhooks.Verify(&resend.VerifyWebhookOptions{
+            Payload:       string(body),
+            Headers:       headers,
+            WebhookSecret: webhookSecret,
+        })
+
+        if err != nil {
+            log.Printf("Webhook verification failed: %v", err)
+            http.Error(w, "Webhook verification failed", http.StatusBadRequest)
+            return
+        }
+
+        // Parse the verified payload
+        var payload map[string]any
+        if err := json.Unmarshal(body, &payload); err != nil {
+            log.Printf("Error parsing JSON: %v", err)
+            http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+            return
+        }
+
+        log.Printf("✓ Webhook verified successfully!")
+        log.Printf("Event Type: %v", payload["type"])
+        
+        // Extract common fields
+        eventType, _ := payload["type"].(string)
+        data, _ := payload["data"].(map[string]any)
+        
+        // Handle specific events
+        switch eventType {
+        case resend.EventEmailSent:
+            emailId, _ := data["email_id"].(string)
+            log.Printf("Email sent: %s", emailId)
+            
+        case resend.EventEmailDelivered:
+            emailId, _ := data["email_id"].(string)
+            log.Printf("Email delivered: %s", emailId)
+            
+        case resend.EventEmailBounced:
+            emailId, _ := data["email_id"].(string)
+            bounceType, _ := data["bounce_type"].(string)
+            log.Printf("Email bounced: %s (type: %s)", emailId, bounceType)
+            
+        case resend.EventContactCreated:
+            contactId, _ := data["contact_id"].(string)
+            email, _ := data["email"].(string)
+            log.Printf("Contact created: %s (%s)", contactId, email)
+            
+        default:
+            log.Printf("Unhandled event: %s", eventType)
+        }
+
+        // Respond with success
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)
+        json.NewEncoder(w).Encode(map[string]bool{"success": true})
+    })
+
+    port := ":5000"
+    fmt.Printf("🚀 Webhook receiver listening on http://localhost%s/webhook\n", port)
+    
+    if err := http.ListenAndServe(port, nil); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
+## Event Payload Examples
+
+Here are examples of webhook payloads for different events:
+
+<Accordion title="email.sent">
+  ```json
+  {
+    "type": "email.sent",
+    "created_at": "2024-01-15T10:30:00.000Z",
+    "data": {
+      "email_id": "4ef2e6e9-8e0a-4c3e-9c42-3c1e3b7a4f3e",
+      "from": "noreply@example.com",
+      "to": ["user@example.com"],
+      "subject": "Welcome to our platform"
+    }
+  }
+  ```
+</Accordion>
+
+<Accordion title="email.delivered">
+  ```json
+  {
+    "type": "email.delivered",
+    "created_at": "2024-01-15T10:31:00.000Z",
+    "data": {
+      "email_id": "4ef2e6e9-8e0a-4c3e-9c42-3c1e3b7a4f3e",
+      "from": "noreply@example.com",
+      "to": ["user@example.com"],
+      "subject": "Welcome to our platform"
+    }
+  }
+  ```
+</Accordion>
+
+<Accordion title="email.bounced">
+  ```json
+  {
+    "type": "email.bounced",
+    "created_at": "2024-01-15T10:31:30.000Z",
+    "data": {
+      "email_id": "4ef2e6e9-8e0a-4c3e-9c42-3c1e3b7a4f3e",
+      "from": "noreply@example.com",
+      "to": ["invalid@example.com"],
+      "subject": "Welcome to our platform",
+      "bounce_type": "hard",
+      "bounce_reason": "Mailbox does not exist"
+    }
+  }
+  ```
+</Accordion>
+
+<Accordion title="contact.created">
+  ```json
+  {
+    "type": "contact.created",
+    "created_at": "2024-01-15T10:32:00.000Z",
+    "data": {
+      "contact_id": "c4f8e2a1-7b3c-4d5e-9f8a-1b2c3d4e5f6a",
+      "email": "newuser@example.com",
+      "first_name": "John",
+      "last_name": "Doe"
+    }
+  }
+  ```
+</Accordion>
+
+## Error Handling
+
+```go Robust Webhook Verification
+func verifyWebhook(client *resend.Client, secret string, r *http.Request) error {
+    body, err := io.ReadAll(r.Body)
+    if err != nil {
+        return fmt.Errorf("failed to read body: %w", err)
+    }
+
+    headers := resend.WebhookHeaders{
+        Id:        r.Header.Get("svix-id"),
+        Timestamp: r.Header.Get("svix-timestamp"),
+        Signature: r.Header.Get("svix-signature"),
+    }
+
+    // Verify all required headers are present
+    if headers.Id == "" || headers.Timestamp == "" || headers.Signature == "" {
+        return fmt.Errorf("missing required webhook headers")
+    }
+
+    // Verify the signature
+    err = client.Webhooks.Verify(&resend.VerifyWebhookOptions{
+        Payload:       string(body),
+        Headers:       headers,
+        WebhookSecret: secret,
+    })
+
+    if err != nil {
+        return fmt.Errorf("verification failed: %w", err)
+    }
+
+    return nil
+}
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Always Verify Signatures" icon="shield-check">
+    Never process webhooks without verifying their signature to prevent spoofing attacks.
+  </Card>
+  
+  <Card title="Use HTTPS Endpoints" icon="lock">
+    Always use HTTPS endpoints for webhooks to ensure data is encrypted in transit.
+  </Card>
+  
+  <Card title="Respond Quickly" icon="bolt">
+    Return a 200 OK response immediately and process events asynchronously.
+  </Card>
+  
+  <Card title="Handle Retries" icon="rotate">
+    Implement idempotency to handle duplicate webhook deliveries gracefully.
+  </Card>
+  
+  <Card title="Store Signing Secrets Securely" icon="key">
+    Store webhook secrets in environment variables or secret management systems.
+  </Card>
+  
+  <Card title="Monitor Webhook Health" icon="heart-pulse">
+    Log webhook events and set up alerts for verification failures.
+  </Card>
+</CardGroup>
+
+## Testing Webhooks
+
+<Steps>
+  <Step title="Use ngrok for Local Testing">
+    Expose your local server to the internet:
+    
+    ```bash
+    ngrok http 5000
+    ```
+    
+    Then create a webhook with the ngrok URL:
+    
+    ```go
+    webhook, err := client.Webhooks.Create(&resend.CreateWebhookRequest{
+        Endpoint: "https://your-ngrok-url.ngrok.io/webhook",
+        Events:   []string{resend.EventEmailSent},
+    })
+    ```
+  </Step>
+  
+  <Step title="Send Test Emails">
+    Trigger webhook events by sending test emails:
+    
+    ```go
+    _, err := client.Emails.Send(&resend.SendEmailRequest{
+        From:    "onboarding@resend.dev",
+        To:      []string{"test@example.com"},
+        Subject: "Test Webhook",
+        Html:    "<p>Testing webhooks</p>",
+    })
+    ```
+  </Step>
+  
+  <Step title="Monitor Logs">
+    Watch your server logs to see webhook events arriving:
+    
+    ```bash
+    ✓ Webhook verified successfully!
+    Event Type: email.sent
+    Email sent: 4ef2e6e9-8e0a-4c3e-9c42-3c1e3b7a4f3e
+    ```
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Email Events" icon="envelope" href="/quickstart">
+    Learn about sending emails and triggering events
+  </Card>
+  
+  <Card title="Broadcasts" icon="broadcast-tower" href="/guides/broadcasts">
+    Send campaigns and receive broadcast events
+  </Card>
+  
+  <Card title="Webhook Example" icon="code" href="https://github.com/resend/resend-go/blob/main/examples/webhook_receiver.go">
+    View the complete webhook receiver example
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="https://resend.com/docs/api-reference/webhooks">
+    View the complete Webhooks API reference
+  </Card>
+</CardGroup>

@@ -1,0 +1,106 @@
+---
+title: List Inbound Emails
+description: Retrieve a paginated list of received emails.
+---
+
+## Method
+
+```go
+func (s *ReceivingSvcImpl) List() (ListReceivedEmailsResponse, error)
+func (s *ReceivingSvcImpl) ListWithContext(ctx context.Context) (ListReceivedEmailsResponse, error)
+func (s *ReceivingSvcImpl) ListWithOptions(ctx context.Context, options *ListOptions) (ListReceivedEmailsResponse, error)
+```
+
+Access via: `client.Emails.Receiving.List()`
+
+## Parameters
+
+<ParamField path="options" type="*ListOptions">
+  Pagination options (only available in `ListWithOptions`)
+  
+  <ParamField path="Limit" type="*int">
+    Maximum number of emails to return
+  </ParamField>
+  
+  <ParamField path="After" type="*string">
+    Cursor for forward pagination
+  </ParamField>
+  
+  <ParamField path="Before" type="*string">
+    Cursor for backward pagination
+  </ParamField>
+</ParamField>
+
+## Response
+
+<ResponseField name="Object" type="string">
+  Always `"list"`
+</ResponseField>
+
+<ResponseField name="HasMore" type="bool">
+  Whether there are more results available
+</ResponseField>
+
+<ResponseField name="Data" type="[]ListReceivedEmail">
+  Array of received email objects
+  
+  <ResponseField name="Id" type="string">
+    The unique identifier of the email
+  </ResponseField>
+  
+  <ResponseField name="To" type="[]string">
+    Array of recipient email addresses
+  </ResponseField>
+  
+  <ResponseField name="From" type="string">
+    The sender's email address
+  </ResponseField>
+  
+  <ResponseField name="CreatedAt" type="string">
+    ISO 8601 timestamp of when the email was received
+  </ResponseField>
+  
+  <ResponseField name="Subject" type="string">
+    The email subject line
+  </ResponseField>
+  
+  <ResponseField name="Bcc" type="[]string">
+    Array of BCC recipient addresses
+  </ResponseField>
+  
+  <ResponseField name="Cc" type="[]string">
+    Array of CC recipient addresses
+  </ResponseField>
+  
+  <ResponseField name="ReplyTo" type="[]string">
+    Array of reply-to addresses
+  </ResponseField>
+  
+  <ResponseField name="MessageId" type="string">
+    The email message ID
+  </ResponseField>
+  
+  <ResponseField name="Attachments" type="[]ReceivedAttachment">
+    Array of attachment metadata (without download URLs)
+  </ResponseField>
+</ResponseField>
+
+## Example
+
+```go
+client := resend.NewClient("re_123456789")
+
+response, err := client.Emails.Receiving.List()
+if err != nil {
+    panic(err)
+}
+
+for _, email := range response.Data {
+    fmt.Printf("Email: %s\n", email.Subject)
+    fmt.Printf("  From: %s\n", email.From)
+    fmt.Printf("  To: %v\n", email.To)
+    fmt.Printf("  Received: %s\n", email.CreatedAt)
+}
+
+fmt.Println("Has More:", response.HasMore)
+```

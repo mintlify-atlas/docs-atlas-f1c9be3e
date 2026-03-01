@@ -1,0 +1,185 @@
+---
+title: 'List Emails'
+description: 'Retrieve a list of emails using the Resend Go SDK'
+---
+
+## List
+
+Retrieves a list of emails.
+
+```go
+func (s *EmailsSvcImpl) List() (ListEmailsResponse, error)
+```
+
+### Returns
+
+<ResponseField name="response" type="ListEmailsResponse">
+  <Expandable title="ListEmailsResponse fields">
+    <ResponseField name="Object" type="string">
+      The object type ("list").
+    </ResponseField>
+    
+    <ResponseField name="HasMore" type="bool">
+      Indicates whether there are more emails available beyond this page.
+    </ResponseField>
+    
+    <ResponseField name="Data" type="[]Email">
+      Array of email objects. See [Get Email](/api-reference/emails/get#get) for Email field details.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	client := resend.NewClient("re_123456789")
+
+	listResp, err := client.Emails.List()
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Found %d emails\n", len(listResp.Data))
+	fmt.Printf("Has more emails: %v\n", listResp.HasMore)
+
+	for _, email := range listResp.Data {
+		fmt.Printf("- ID: %s, Subject: %s, To: %v\n",
+			email.Id, email.Subject, email.To)
+	}
+}
+```
+
+---
+
+## ListWithContext
+
+Retrieves a list of emails with context.
+
+```go
+func (s *EmailsSvcImpl) ListWithContext(ctx context.Context) (ListEmailsResponse, error)
+```
+
+### Parameters
+
+<ParamField path="ctx" type="context.Context" required>
+  Context for the request.
+</ParamField>
+
+### Returns
+
+<ResponseField name="response" type="ListEmailsResponse">
+  See [List](#list) for response field details.
+</ResponseField>
+
+### Example
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	ctx := context.Background()
+	client := resend.NewClient("re_123456789")
+
+	listResp, err := client.Emails.ListWithContext(ctx)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Found %d emails\n", len(listResp.Data))
+}
+```
+
+---
+
+## ListWithOptions
+
+Retrieves a list of emails with pagination options.
+
+```go
+func (s *EmailsSvcImpl) ListWithOptions(ctx context.Context, options *ListOptions) (ListEmailsResponse, error)
+```
+
+### Parameters
+
+<ParamField path="ctx" type="context.Context" required>
+  Context for the request.
+</ParamField>
+
+<ParamField path="options" type="*ListOptions">
+  Pagination options for the list request.
+  
+  <Expandable title="ListOptions fields">
+    <ParamField path="Limit" type="*int">
+      Maximum number of emails to return. Must be a pointer to an integer.
+    </ParamField>
+    
+    <ParamField path="After" type="*string">
+      Cursor for forward pagination. Returns emails after this email ID. Must be a pointer to a string.
+    </ParamField>
+    
+    <ParamField path="Before" type="*string">
+      Cursor for backward pagination. Returns emails before this email ID. Must be a pointer to a string.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="response" type="ListEmailsResponse">
+  See [List](#list) for response field details.
+</ResponseField>
+
+### Example
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	ctx := context.Background()
+	client := resend.NewClient("re_123456789")
+
+	// List with limit
+	limit := 10
+	listResp, err := client.Emails.ListWithOptions(ctx, &resend.ListOptions{
+		Limit: &limit,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Found %d emails (limited to 10)\n", len(listResp.Data))
+
+	// Cursor-based pagination
+	if listResp.HasMore && len(listResp.Data) > 0 {
+		lastEmailID := listResp.Data[len(listResp.Data)-1].Id
+		nextPage, err := client.Emails.ListWithOptions(ctx, &resend.ListOptions{
+			Limit: &limit,
+			After: &lastEmailID,
+		})
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("Found %d more emails in next page\n", len(nextPage.Data))
+	}
+}
+```

@@ -1,0 +1,74 @@
+---
+title: List API Keys
+description: Retrieve a paginated list of API keys.
+---
+
+## Method
+
+```go
+func (s *ApiKeysSvcImpl) List() (ListApiKeysResponse, error)
+func (s *ApiKeysSvcImpl) ListWithContext(ctx context.Context) (ListApiKeysResponse, error)
+func (s *ApiKeysSvcImpl) ListWithOptions(ctx context.Context, options *ListOptions) (ListApiKeysResponse, error)
+```
+
+## Parameters
+
+<ParamField path="options" type="*ListOptions">
+  Pagination options (only available in `ListWithOptions`)
+  
+  <ParamField path="Limit" type="*int">
+    Maximum number of API keys to return
+  </ParamField>
+  
+  <ParamField path="After" type="*string">
+    Cursor for forward pagination
+  </ParamField>
+  
+  <ParamField path="Before" type="*string">
+    Cursor for backward pagination
+  </ParamField>
+</ParamField>
+
+## Response
+
+<ResponseField name="Object" type="string">
+  Always `"list"`
+</ResponseField>
+
+<ResponseField name="HasMore" type="bool">
+  Whether there are more results available
+</ResponseField>
+
+<ResponseField name="Data" type="[]ApiKey">
+  Array of API key objects
+  
+  <ResponseField name="Id" type="string">
+    The unique identifier of the API key
+  </ResponseField>
+  
+  <ResponseField name="Name" type="string">
+    The name of the API key
+  </ResponseField>
+  
+  <ResponseField name="CreatedAt" type="string">
+    ISO 8601 timestamp of when the API key was created
+  </ResponseField>
+</ResponseField>
+
+## Example
+
+```go
+client := resend.NewClient("re_123456789")
+
+response, err := client.ApiKeys.List()
+if err != nil {
+    panic(err)
+}
+
+for _, apiKey := range response.Data {
+    fmt.Printf("API Key: %s (%s)\n", apiKey.Name, apiKey.Id)
+    fmt.Printf("  Created: %s\n", apiKey.CreatedAt)
+}
+
+fmt.Println("Has More:", response.HasMore)
+```

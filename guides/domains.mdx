@@ -1,0 +1,432 @@
+---
+title: Domain Management
+description: Learn how to manage custom domains for sending emails with the Resend Go SDK
+---
+
+Domains allow you to send emails from your own domain. This guide covers creating, verifying, updating, and managing domains with the Resend Go SDK.
+
+## Overview
+
+The Domains API enables you to:
+- Create and configure custom sending domains
+- Verify domain ownership via DNS records
+- Configure TLS and tracking settings
+- Manage DNS records for email delivery
+- Choose regions for domain hosting
+
+## Creating a Domain
+
+Create a new domain with optional region and custom return path configuration.
+
+<CodeGroup>
+```go Basic Domain
+import (
+    "context"
+    "github.com/resend/resend-go/v3"
+)
+
+client := resend.NewClient("re_123456789")
+
+params := &resend.CreateDomainRequest{
+    Name: "example.com",
+}
+
+domain, err := client.Domains.Create(params)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Domain ID:", domain.Id)
+fmt.Println("Status:", domain.Status)
+```
+
+```go With Region and Custom Return Path
+params := &resend.CreateDomainRequest{
+    Name:             "example.com",
+    Region:           "us-east-1",
+    CustomReturnPath: "outbound",
+}
+
+domain, err := client.Domains.CreateWithContext(context.Background(), params)
+if err != nil {
+    panic(err)
+}
+
+// Domain returns DNS records needed for verification
+for _, record := range domain.Records {
+    fmt.Printf("%s: %s\n", record.Type, record.Value)
+}
+```
+</CodeGroup>
+
+<Note>
+  After creating a domain, you'll receive DNS records that must be added to your domain's DNS configuration before the domain can be verified.
+</Note>
+
+## DNS Records
+
+When you create a domain, Resend returns the DNS records you need to add to your domain registrar.
+
+### Record Structure
+
+Each DNS record contains the following fields:
+
+<ParamField path="record" type="string">
+  The record identifier (e.g., "SPF", "DKIM", "MX")
+</ParamField>
+
+<ParamField path="name" type="string">
+  The DNS record name/hostname
+</ParamField>
+
+<ParamField path="type" type="string">
+  The DNS record type (TXT, MX, CNAME)
+</ParamField>
+
+<ParamField path="value" type="string">
+  The DNS record value to set
+</ParamField>
+
+<ParamField path="ttl" type="string">
+  Time-to-live for the DNS record
+</ParamField>
+
+<ParamField path="priority" type="json.Number" optional>
+  Priority for MX records
+</ParamField>
+
+<ParamField path="status" type="string">
+  Verification status of this record ("verified" or "not_verified")
+</ParamField>
+
+```go Accessing DNS Records
+domain, err := client.Domains.Create(params)
+if err != nil {
+    panic(err)
+}
+
+for _, record := range domain.Records {
+    fmt.Printf("Record: %s\n", record.Record)
+    fmt.Printf("Type: %s\n", record.Type)
+    fmt.Printf("Name: %s\n", record.Name)
+    fmt.Printf("Value: %s\n", record.Value)
+    fmt.Printf("Status: %s\n\n", record.Status)
+}
+```
+
+## Verifying a Domain
+
+After adding the DNS records to your domain, verify the domain to start sending emails.
+
+```go Verify Domain
+verified, err := client.Domains.Verify("d91cd9bd-1176-453e-8fc1-35364d380206")
+if err != nil {
+    panic(err)
+}
+
+if verified {
+    fmt.Println("Domain verified successfully!")
+} else {
+    fmt.Println("Domain verification failed")
+}
+```
+
+<Warning>
+  DNS propagation can take up to 48 hours. If verification fails immediately, wait a few minutes and try again.
+</Warning>
+
+## Retrieving a Domain
+
+Get details about a specific domain including its verification status and DNS records.
+
+```go Get Domain
+ctx := context.Background()
+
+domain, err := client.Domains.GetWithContext(ctx, "d91cd9bd-1176-453e-8fc1-35364d380206")
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Domain:", domain.Name)
+fmt.Println("Status:", domain.Status)
+fmt.Println("Region:", domain.Region)
+fmt.Println("Created:", domain.CreatedAt)
+
+// Check which DNS records are verified
+for _, record := range domain.Records {
+    if record.Status == "verified" {
+        fmt.Printf("✓ %s verified\n", record.Record)
+    } else {
+        fmt.Printf("✗ %s not verified\n", record.Record)
+    }
+}
+```
+
+## Listing Domains
+
+Retrieve all domains in your account with optional pagination.
+
+<CodeGroup>
+```go List All Domains
+domains, err := client.Domains.List()
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("You have %d domains\n", len(domains.Data))
+
+for _, domain := range domains.Data {
+    fmt.Printf("%s - %s\n", domain.Name, domain.Status)
+}
+```
+
+```go With Pagination
+limit := 10
+options := &resend.ListOptions{
+    Limit: &limit,
+}
+
+domains, err := client.Domains.ListWithOptions(context.Background(), options)
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Retrieved %d domains\n", len(domains.Data))
+fmt.Printf("Has more: %v\n", domains.HasMore)
+```
+</CodeGroup>
+
+## Updating a Domain
+
+Update domain settings including tracking options and TLS configuration.
+
+### TLS Options
+
+Resend supports two TLS modes:
+
+<Accordion title="Enforced TLS">
+  Requires TLS encryption for all email delivery. If the recipient server doesn't support TLS, the email will not be delivered.
+  
+  ```go
+  Tls: resend.Enforced
+  ```
+</Accordion>
+
+<Accordion title="Opportunistic TLS">
+  Uses TLS when available but falls back to unencrypted delivery if the recipient server doesn't support TLS.
+  
+  ```go
+  Tls: resend.Opportunistic
+  ```
+</Accordion>
+
+### Update Example
+
+```go Update Domain Settings
+updateParams := &resend.UpdateDomainRequest{
+    OpenTracking:  true,
+    ClickTracking: true,
+    Tls:           resend.Enforced,
+}
+
+updated, err := client.Domains.Update(
+    "d91cd9bd-1176-453e-8fc1-35364d380206",
+    updateParams,
+)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Domain updated:", updated.Name)
+```
+
+<ParamField path="OpenTracking" type="bool" optional>
+  Enable or disable open tracking for emails sent from this domain
+</ParamField>
+
+<ParamField path="ClickTracking" type="bool" optional>
+  Enable or disable click tracking for emails sent from this domain
+</ParamField>
+
+<ParamField path="Tls" type="TlsOption" optional>
+  TLS enforcement mode: `resend.Enforced` or `resend.Opportunistic`
+</ParamField>
+
+## Region Configuration
+
+When creating a domain, you can specify the region where your domain's email infrastructure will be hosted.
+
+<Tip>
+  Choose a region close to your users for optimal email delivery performance.
+</Tip>
+
+```go Domain with Region
+params := &resend.CreateDomainRequest{
+    Name:   "example.com",
+    Region: "us-east-1", // Options: us-east-1, eu-west-1, sa-east-1
+}
+
+domain, err := client.Domains.Create(params)
+```
+
+Available regions:
+- `us-east-1` - US East (N. Virginia)
+- `eu-west-1` - Europe (Ireland)
+- `sa-east-1` - South America (São Paulo)
+
+## Deleting a Domain
+
+Remove a domain from your account. This action cannot be undone.
+
+```go Remove Domain
+removed, err := client.Domains.Remove("d91cd9bd-1176-453e-8fc1-35364d380206")
+if err != nil {
+    panic(err)
+}
+
+if removed {
+    fmt.Println("Domain removed successfully")
+}
+```
+
+<Warning>
+  Deleting a domain will prevent you from sending emails from that domain. Make sure to update any email configurations before deletion.
+</Warning>
+
+## Complete Example
+
+Here's a complete workflow for setting up and managing a domain:
+
+```go Complete Domain Workflow
+package main
+
+import (
+    "context"
+    "fmt"
+    "os"
+    
+    "github.com/resend/resend-go/v3"
+)
+
+func main() {
+    ctx := context.Background()
+    apiKey := os.Getenv("RESEND_API_KEY")
+    client := resend.NewClient(apiKey)
+
+    // 1. Create domain
+    params := &resend.CreateDomainRequest{
+        Name:             "example.com",
+        Region:           "us-east-1",
+        CustomReturnPath: "outbound",
+    }
+
+    domain, err := client.Domains.CreateWithContext(ctx, params)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println("Created Domain:", domain.Id)
+
+    // 2. Display DNS records to configure
+    fmt.Println("\nAdd these DNS records to your domain:")
+    for _, record := range domain.Records {
+        fmt.Printf("\nType: %s\n", record.Type)
+        fmt.Printf("Name: %s\n", record.Name)
+        fmt.Printf("Value: %s\n", record.Value)
+    }
+
+    // 3. After adding DNS records, verify the domain
+    // (In practice, wait for DNS propagation before verifying)
+    verified, err := client.Domains.VerifyWithContext(ctx, domain.Id)
+    if err != nil {
+        panic(err)
+    }
+    
+    if verified {
+        fmt.Println("\n✓ Domain verified successfully!")
+    }
+
+    // 4. Update domain settings
+    updateParams := &resend.UpdateDomainRequest{
+        OpenTracking:  true,
+        ClickTracking: true,
+        Tls:           resend.Enforced,
+    }
+
+    updated, err := client.Domains.UpdateWithContext(ctx, domain.Id, updateParams)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("\nDomain updated: %s\n", updated.Name)
+
+    // 5. List all domains
+    domains, err := client.Domains.ListWithContext(ctx)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("\nYou have %d domain(s)\n", len(domains.Data))
+}
+```
+
+## Error Handling
+
+Handle common domain-related errors:
+
+```go Error Handling
+domain, err := client.Domains.Create(params)
+if err != nil {
+    // Check for specific error types
+    fmt.Printf("Error creating domain: %v\n", err)
+    return
+}
+
+// Verify domain with error handling
+verified, err := client.Domains.Verify(domain.Id)
+if err != nil {
+    fmt.Printf("Verification failed: %v\n", err)
+    fmt.Println("This might be because:")
+    fmt.Println("- DNS records haven't propagated yet")
+    fmt.Println("- DNS records were not configured correctly")
+    fmt.Println("- Domain doesn't exist")
+    return
+}
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Verify DNS Records" icon="check">
+    Always verify that DNS records are properly configured before attempting domain verification.
+  </Card>
+  
+  <Card title="Use Custom Return Paths" icon="envelope">
+    Configure custom return paths to improve deliverability and branding.
+  </Card>
+  
+  <Card title="Enable Tracking" icon="chart-line">
+    Enable open and click tracking to monitor email engagement.
+  </Card>
+  
+  <Card title="Choose Regions Wisely" icon="globe">
+    Select a region close to your primary audience for better performance.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Send Emails" icon="paper-plane" href="/quickstart">
+    Start sending emails from your verified domain
+  </Card>
+  
+  <Card title="Webhooks" icon="webhook" href="/guides/webhooks">
+    Set up webhooks to receive domain events
+  </Card>
+  
+  <Card title="Broadcasts" icon="broadcast-tower" href="/guides/broadcasts">
+    Send email campaigns from your domain
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="https://resend.com/docs/api-reference/domains">
+    View the complete Domains API reference
+  </Card>
+</CardGroup>

@@ -1,0 +1,76 @@
+---
+title: Get Inbound Email Attachment
+description: Retrieve a specific attachment from a received email with download URL.
+---
+
+## Method
+
+```go
+func (s *ReceivingSvcImpl) GetAttachment(emailId string, attachmentId string) (*EmailAttachment, error)
+func (s *ReceivingSvcImpl) GetAttachmentWithContext(ctx context.Context, emailId string, attachmentId string) (*EmailAttachment, error)
+```
+
+Access via: `client.Emails.Receiving.GetAttachment(emailId, attachmentId)`
+
+## Parameters
+
+<ParamField path="emailId" type="string" required>
+  The unique identifier of the received email
+</ParamField>
+
+<ParamField path="attachmentId" type="string" required>
+  The unique identifier of the attachment
+</ParamField>
+
+## Response
+
+<ResponseField name="Object" type="string">
+  Always `"email_attachment"`
+</ResponseField>
+
+<ResponseField name="Id" type="string">
+  The unique identifier of the attachment
+</ResponseField>
+
+<ResponseField name="Filename" type="string">
+  The filename of the attachment
+</ResponseField>
+
+<ResponseField name="ContentType" type="string">
+  The MIME type of the attachment
+</ResponseField>
+
+<ResponseField name="ContentDisposition" type="string">
+  The content disposition header value
+</ResponseField>
+
+<ResponseField name="ContentId" type="string">
+  The content ID for inline attachments
+</ResponseField>
+
+<ResponseField name="DownloadUrl" type="string">
+  Temporary URL to download the attachment file
+</ResponseField>
+
+<ResponseField name="ExpiresAt" type="string">
+  ISO 8601 timestamp of when the download URL expires
+</ResponseField>
+
+## Example
+
+```go
+client := resend.NewClient("re_123456789")
+
+attachment, err := client.Emails.Receiving.GetAttachment("email_abc123", "att_xyz789")
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Filename:", attachment.Filename)
+fmt.Println("Content Type:", attachment.ContentType)
+fmt.Println("Download URL:", attachment.DownloadUrl)
+fmt.Println("Expires At:", attachment.ExpiresAt)
+
+// Download the attachment using the URL
+// resp, err := http.Get(attachment.DownloadUrl)
+```

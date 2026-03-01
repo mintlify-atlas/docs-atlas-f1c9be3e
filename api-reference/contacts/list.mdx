@@ -1,0 +1,171 @@
+---
+title: List Contacts
+description: Retrieve a list of contacts from your audience or global contacts
+---
+
+## Methods
+
+### List
+
+```go
+func (s *ContactsSvcImpl) List(options *ListContactsOptions) (ListContactsResponse, error)
+```
+
+Retrieves a list of contacts.
+
+### ListWithContext
+
+```go
+func (s *ContactsSvcImpl) ListWithContext(ctx context.Context, options *ListContactsOptions) (ListContactsResponse, error)
+```
+
+Retrieves a list of contacts with context support.
+
+## Parameters
+
+### ListContactsOptions
+
+<ParamField query="audience_id" type="string">
+  Optional - Omit for global contacts. Include to list audience-specific contacts.
+</ParamField>
+
+<ParamField query="limit" type="*int">
+  Maximum number of contacts to return per page
+</ParamField>
+
+<ParamField query="after" type="*string">
+  Cursor for pagination - retrieve results after this cursor
+</ParamField>
+
+<ParamField query="before" type="*string">
+  Cursor for pagination - retrieve results before this cursor
+</ParamField>
+
+## Response
+
+### ListContactsResponse
+
+<ResponseField name="object" type="string">
+  Object type ("list")
+</ResponseField>
+
+<ResponseField name="data" type="[]Contact">
+  Array of contact objects. Each contact contains:
+  - `id` (string): Contact identifier
+  - `email` (string): Email address
+  - `object` (string): Object type
+  - `first_name` (string): First name
+  - `last_name` (string): Last name
+  - `created_at` (string): Creation timestamp
+  - `unsubscribed` (bool): Unsubscribe status
+  - `properties` (map[string]any): Custom properties (global contacts only)
+</ResponseField>
+
+<ResponseField name="has_more" type="bool">
+  Whether there are more results available for pagination
+</ResponseField>
+
+## Examples
+
+### List All Global Contacts
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    options := &resend.ListContactsOptions{}
+
+    contacts, err := client.Contacts.List(options)
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("Total contacts:", len(contacts.Data))
+    for _, contact := range contacts.Data {
+        fmt.Printf("- %s (%s)\n", contact.Email, contact.FirstName)
+    }
+}
+```
+
+### List with Pagination
+
+```go
+limit := 20
+
+options := &resend.ListContactsOptions{
+    Limit: &limit,
+}
+
+contacts, err := client.Contacts.List(options)
+if err != nil {
+    panic(err)
+}
+
+fmt.Println("Contacts:", len(contacts.Data))
+fmt.Println("Has more:", contacts.HasMore)
+```
+
+### List Audience Contacts
+
+```go
+options := &resend.ListContactsOptions{
+    AudienceId: "aud_123456",
+}
+
+contacts, err := client.Contacts.List(options)
+if err != nil {
+    panic(err)
+}
+```
+
+### Paginate Through All Contacts
+
+```go
+ctx := context.Background()
+
+var allContacts []resend.Contact
+limit := 50
+after := ""
+
+for {
+    options := &resend.ListContactsOptions{
+        Limit: &limit,
+    }
+    
+    if after != "" {
+        options.After = &after
+    }
+    
+    response, err := client.Contacts.ListWithContext(ctx, options)
+    if err != nil {
+        panic(err)
+    }
+    
+    allContacts = append(allContacts, response.Data...)
+    
+    if !response.HasMore {
+        break
+    }
+    
+    // Get the last contact ID as cursor for next page
+    if len(response.Data) > 0 {
+        after = response.Data[len(response.Data)-1].Id
+    }
+}
+
+fmt.Println("Total contacts:", len(allContacts))
+```
+
+## Notes
+
+- Omit `AudienceId` to list global contacts
+- Include `AudienceId` to list audience-specific contacts
+- Use `Limit`, `After`, and `Before` for pagination
+- The `HasMore` field indicates if additional pages are available

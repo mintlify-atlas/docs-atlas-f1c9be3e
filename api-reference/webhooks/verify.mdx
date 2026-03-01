@@ -1,0 +1,91 @@
+---
+title: Verify Webhook
+description: Verify the authenticity of webhook payloads using HMAC-SHA256 signature verification.
+---
+
+## Method
+
+```go
+func (s *WebhooksSvcImpl) Verify(options *VerifyWebhookOptions) error
+```
+
+## Parameters
+
+<ParamField path="options" type="*VerifyWebhookOptions" required>
+  The webhook verification parameters
+  
+  <ParamField path="Payload" type="string" required>
+    The raw webhook payload body as a string
+  </ParamField>
+  
+  <ParamField path="Headers" type="WebhookHeaders" required>
+    The webhook verification headers
+    
+    <ParamField path="Id" type="string" required>
+      The `svix-id` header value
+    </ParamField>
+    
+    <ParamField path="Timestamp" type="string" required>
+      The `svix-timestamp` header value
+    </ParamField>
+    
+    <ParamField path="Signature" type="string" required>
+      The `svix-signature` header value
+    </ParamField>
+  </ParamField>
+  
+  <ParamField path="WebhookSecret" type="string" required>
+    The signing secret from webhook creation (starts with `whsec_`)
+  </ParamField>
+</ParamField>
+
+## Response
+
+Returns `nil` if verification succeeds, or an error if verification fails.
+
+## Example
+
+```go
+import (
+    "io"
+    "net/http"
+    "github.com/resend/resend-go/v2"
+)
+
+func webhookHandler(w http.ResponseWriter, r *http.Request) {
+    client := resend.NewClient("re_123456789")
+    
+    // Read the raw body
+    body, err := io.ReadAll(r.Body)
+    if err != nil {
+        http.Error(w, "Failed to read body", http.StatusBadRequest)
+        return
+    }
+    
+    // Verify the webhook
+    err = client.Webhooks.Verify(&resend.VerifyWebhookOptions{
+        Payload: string(body),
+        Headers: resend.WebhookHeaders{
+            Id:        r.Header.Get("svix-id"),
+            Timestamp: r.Header.Get("svix-timestamp"),
+            Signature: r.Header.Get("svix-signature"),
+        },
+        WebhookSecret: "whsec_your_signing_secret",
+    })
+    
+    if err != nil {
+        http.Error(w, "Invalid signature", http.StatusUnauthorized)
+        return
+    }
+    
+    // Webhook is verified, process the event
+    w.WriteHeader(http.StatusOK)
+}
+```
+
+## Notes
+
+- The verification implements HMAC-SHA256 signature validation
+- Timestamp validation prevents replay attacks (default tolerance: 5 minutes)
+- The signing secret is provided once when creating the webhook
+- All three headers (`svix-id`, `svix-timestamp`, `svix-signature`) are required

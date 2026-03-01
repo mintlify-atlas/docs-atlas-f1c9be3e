@@ -1,0 +1,463 @@
+---
+title: Error Handling
+description: Handle errors, rate limits, and implement retry strategies in the Resend Go SDK
+---
+
+Proper error handling is crucial for building reliable email systems. This guide covers error types, rate limit handling, and retry strategies.
+
+## Error Types
+
+The Resend Go SDK provides several error types for different scenarios:
+
+<AccordionGroup>
+  <Accordion title="RateLimitError" icon="gauge-high">
+    Returned when you exceed your rate limit. Contains metadata about limits and retry timing.
+    
+    ```go
+    type RateLimitError struct {
+    	Message    string // Error message from the API
+    	Limit      string // Maximum requests allowed
+    	Remaining  string // Requests remaining in current window
+    	Reset      string // Time when limit resets (seconds)
+    	RetryAfter string // Recommended wait time before retry (seconds)
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="InvalidRequestError" icon="circle-xmark">
+    Returned for client-side errors like invalid parameters or missing required fields.
+    
+    ```go
+    type InvalidRequestError struct {
+    	StatusCode int    // HTTP status code (400 or 422)
+    	Name       string // Error name
+    	Message    string // Error description
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="MissingRequiredFieldsError" icon="exclamation">
+    Returned when required fields are missing before making an API request.
+    
+    ```go
+    type MissingRequiredFieldsError struct {
+    	message string // Description of missing fields
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="BatchError" icon="envelopes-bulk">
+    Returned for individual email failures in batch requests.
+    
+    ```go
+    type BatchError struct {
+    	Index   int    // Position of failed email in batch
+    	Message string // Error description
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Basic Error Handling
+
+Always check for errors after API calls:
+
+```go
+params := &resend.SendEmailRequest{
+	To:      []string{"delivered@resend.dev"},
+	From:    "onboarding@resend.dev",
+	Text:    "hello world",
+	Subject: "Hello from Golang",
+}
+
+sent, err := client.Emails.SendWithContext(ctx, params)
+if err != nil {
+	// Log the error
+	log.Printf("Failed to send email: %v", err)
+	
+	// Handle based on error type
+	// ... see sections below
+	
+	return err
+}
+
+log.Printf("Email sent successfully: %s", sent.Id)
+```
+
+## Handle Rate Limits
+
+Rate limits protect the API from abuse. Handle them gracefully with automatic retry:
+
+<Steps>
+  <Step title="Check for rate limit errors">
+    Use `errors.Is` to detect rate limit errors:
+
+    ```go
+    import (
+    	"errors"
+    	"github.com/resend/resend-go/v3"
+    )
+
+    sent, err := client.Emails.SendWithContext(ctx, params)
+    if err != nil {
+    	if errors.Is(err, resend.ErrRateLimit) {
+    		fmt.Println("Rate limit exceeded!")
+    		// Handle rate limit...
+    	}
+    }
+    ```
+  </Step>
+
+  <Step title="Extract rate limit details">
+    Get detailed information about the rate limit:
+
+    ```go
+    var rateLimitErr *resend.RateLimitError
+    if errors.As(err, &rateLimitErr) {
+    	fmt.Printf("Message: %s\n", rateLimitErr.Message)
+    	fmt.Printf("Limit: %s requests\n", rateLimitErr.Limit)
+    	fmt.Printf("Remaining: %s requests\n", rateLimitErr.Remaining)
+    	fmt.Printf("Reset in: %s seconds\n", rateLimitErr.Reset)
+    	fmt.Printf("Retry after: %s seconds\n", rateLimitErr.RetryAfter)
+    }
+    ```
+  </Step>
+
+  <Step title="Implement retry logic">
+    Wait and retry based on the `RetryAfter` value:
+
+    ```go
+    import (
+    	"strconv"
+    	"time"
+    )
+
+    if retryAfter, err := strconv.Atoi(rateLimitErr.RetryAfter); err == nil {
+    	fmt.Printf("Waiting %d seconds before retry...\n", retryAfter)
+    	time.Sleep(time.Duration(retryAfter) * time.Second)
+
+    	// Retry the request
+    	sent, err = client.Emails.SendWithContext(ctx, params)
+    	if err != nil {
+    		return err
+    	}
+    	fmt.Printf("Successfully sent after retry: %s\n", sent.Id)
+    }
+    ```
+  </Step>
+</Steps>
+
+## Complete Rate Limit Example
+
+Here's a complete example from [examples/handle_rate_limit.go](https://github.com/resend/resend-go/blob/main/examples/handle_rate_limit.go):
+
+```go examples/handle_rate_limit.go
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"strconv"
+	"time"
+
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	ctx := context.TODO()
+	apiKey := os.Getenv("RESEND_API_KEY")
+	client := resend.NewClient(apiKey)
+
+	params := &resend.SendEmailRequest{
+		To:      []string{"delivered@resend.dev"},
+		From:    "onboarding@resend.dev",
+		Text:    "hello world",
+		Subject: "Hello from Golang",
+	}
+
+	sent, err := client.Emails.SendWithContext(ctx, params)
+	if err != nil {
+		// Check if it's a rate limit error using errors.Is
+		if errors.Is(err, resend.ErrRateLimit) {
+			fmt.Println("Rate limit exceeded!")
+
+			// Extract detailed rate limit information
+			var rateLimitErr *resend.RateLimitError
+			if errors.As(err, &rateLimitErr) {
+				fmt.Printf("Message: %s\n", rateLimitErr.Message)
+				fmt.Printf("Limit: %s requests\n", rateLimitErr.Limit)
+				fmt.Printf("Remaining: %s requests\n", rateLimitErr.Remaining)
+				fmt.Printf("Reset in: %s seconds\n", rateLimitErr.Reset)
+				fmt.Printf("Retry after: %s seconds\n", rateLimitErr.RetryAfter)
+
+				// Implement retry logic
+				if retryAfter, err := strconv.Atoi(rateLimitErr.RetryAfter); err == nil {
+					fmt.Printf("Waiting %d seconds before retry...\n", retryAfter)
+					time.Sleep(time.Duration(retryAfter) * time.Second)
+
+					// Retry the request
+					sent, err = client.Emails.SendWithContext(ctx, params)
+					if err != nil {
+						panic(err)
+					}
+					fmt.Printf("Successfully sent after retry: %s\n", sent.Id)
+				}
+			}
+			return
+		}
+
+		// Handle other errors
+		panic(err)
+	}
+
+	fmt.Printf("Email sent successfully: %s\n", sent.Id)
+}
+```
+
+## Advanced Retry Strategies
+
+### Exponential Backoff
+
+Retry with increasing delays between attempts:
+
+```go
+import (
+	"errors"
+	"math"
+	"time"
+)
+
+func sendEmailWithRetry(ctx context.Context, client *resend.Client, params *resend.SendEmailRequest, maxRetries int) (*resend.SendEmailResponse, error) {
+	var sent *resend.SendEmailResponse
+	var err error
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		sent, err = client.Emails.SendWithContext(ctx, params)
+		
+		// Success
+		if err == nil {
+			return sent, nil
+		}
+
+		// Check if it's a rate limit error
+		if errors.Is(err, resend.ErrRateLimit) {
+			var rateLimitErr *resend.RateLimitError
+			if errors.As(err, &rateLimitErr) {
+				// Use RetryAfter from API if available
+				if retryAfter, parseErr := strconv.Atoi(rateLimitErr.RetryAfter); parseErr == nil {
+					waitDuration := time.Duration(retryAfter) * time.Second
+					fmt.Printf("Rate limited. Waiting %v before retry %d/%d\n",
+						waitDuration, attempt+1, maxRetries)
+					time.Sleep(waitDuration)
+					continue
+				}
+			}
+		}
+
+		// For other errors, use exponential backoff
+		if attempt < maxRetries {
+			backoff := time.Duration(math.Pow(2, float64(attempt))) * time.Second
+			fmt.Printf("Request failed (attempt %d/%d): %v. Retrying in %v...\n",
+				attempt+1, maxRetries, err, backoff)
+			time.Sleep(backoff)
+			continue
+		}
+
+		// Max retries exceeded
+		break
+	}
+
+	return nil, fmt.Errorf("failed after %d retries: %w", maxRetries, err)
+}
+
+// Usage
+sent, err := sendEmailWithRetry(ctx, client, params, 3)
+if err != nil {
+	log.Printf("Failed to send email after retries: %v", err)
+}
+```
+
+### Retry with Context Timeout
+
+Limit total retry time using context:
+
+```go
+func sendEmailWithTimeout(ctx context.Context, client *resend.Client, params *resend.SendEmailRequest, timeout time.Duration) (*resend.SendEmailResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	attempt := 0
+	for {
+		attempt++
+		
+		sent, err := client.Emails.SendWithContext(ctx, params)
+		if err == nil {
+			return sent, nil
+		}
+
+		// Check if context is done
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("timeout after %d attempts: %w", attempt, ctx.Err())
+		default:
+		}
+
+		// Handle rate limit
+		if errors.Is(err, resend.ErrRateLimit) {
+			var rateLimitErr *resend.RateLimitError
+			if errors.As(err, &rateLimitErr) {
+				if retryAfter, parseErr := strconv.Atoi(rateLimitErr.RetryAfter); parseErr == nil {
+					waitDuration := time.Duration(retryAfter) * time.Second
+					
+					// Check if we have time to wait
+					select {
+					case <-time.After(waitDuration):
+						continue
+					case <-ctx.Done():
+						return nil, fmt.Errorf("timeout while waiting for rate limit: %w", ctx.Err())
+					}
+				}
+			}
+		}
+
+		// For other errors, wait briefly before retry
+		select {
+		case <-time.After(1 * time.Second):
+			continue
+		case <-ctx.Done():
+			return nil, fmt.Errorf("timeout: %w", ctx.Err())
+		}
+	}
+}
+
+// Usage: Retry for up to 30 seconds
+sent, err := sendEmailWithTimeout(ctx, client, params, 30*time.Second)
+if err != nil {
+	log.Printf("Failed to send email: %v", err)
+}
+```
+
+## Handle Validation Errors
+
+Catch and handle invalid request errors:
+
+```go
+sent, err := client.Emails.SendWithContext(ctx, params)
+if err != nil {
+	// Check for validation errors
+	if strings.Contains(err.Error(), "Invalid request") ||
+	   strings.Contains(err.Error(), "validation") {
+		log.Printf("Validation error: %v", err)
+		
+		// Don't retry validation errors - fix the input instead
+		return fmt.Errorf("invalid email parameters: %w", err)
+	}
+	
+	// Handle other errors
+	return err
+}
+```
+
+<Warning>
+Validation errors indicate a problem with your request parameters. Don't retry these errors - fix the input instead.
+</Warning>
+
+## Handle Batch Errors
+
+When sending batch emails, some may succeed while others fail:
+
+```go
+batchParams := []*resend.SendEmailRequest{
+	{
+		To:      []string{"user1@example.com"},
+		From:    "onboarding@resend.dev",
+		Subject: "Welcome",
+		Text:    "Hello user 1",
+	},
+	{
+		To:      []string{"invalid-email"},
+		From:    "onboarding@resend.dev",
+		Subject: "Welcome",
+		Text:    "Hello user 2",
+	},
+}
+
+resp, err := client.Batch.SendWithContext(ctx, batchParams)
+if err != nil {
+	log.Printf("Batch request failed: %v", err)
+	return err
+}
+
+// Check for partial failures
+if len(resp.Errors) > 0 {
+	fmt.Printf("Some emails failed:\n")
+	for _, batchErr := range resp.Errors {
+		fmt.Printf("  - Email at index %d failed: %s\n",
+			batchErr.Index, batchErr.Message)
+	}
+}
+
+// Process successful emails
+fmt.Printf("Successfully sent %d emails:\n", len(resp.Data))
+for i, sent := range resp.Data {
+	fmt.Printf("  - Email %d: %s\n", i, sent.Id)
+}
+```
+
+## Error Handling Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Always Check Errors" icon="check">
+    Never ignore error returns from API calls. Always check and handle them appropriately.
+  </Card>
+  <Card title="Use Idempotency Keys" icon="key">
+    When retrying, use idempotency keys to prevent duplicate emails:
+    
+    ```go
+    options := &resend.SendEmailOptions{
+    	IdempotencyKey: generateUniqueKey(),
+    }
+    client.Emails.SendWithOptions(ctx, params, options)
+    ```
+  </Card>
+  <Card title="Don't Retry Validation Errors" icon="ban">
+    Validation errors indicate bad input. Fix your parameters instead of retrying.
+  </Card>
+  <Card title="Respect Rate Limits" icon="gauge">
+    Always use the `RetryAfter` value from rate limit errors. Don't retry immediately.
+  </Card>
+  <Card title="Set Timeouts" icon="clock">
+    Use context timeouts to prevent indefinite retries:
+    
+    ```go
+    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+    defer cancel()
+    ```
+  </Card>
+  <Card title="Log Errors" icon="file-lines">
+    Log errors with context to help debugging:
+    
+    ```go
+    log.Printf("Failed to send email to %v: %v", params.To, err)
+    ```
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Custom Client" icon="gear" href="/examples/custom-client">
+    Configure HTTP client with custom retry logic
+  </Card>
+  <Card title="Basic Usage" icon="envelope" href="/examples/basic-usage">
+    Learn the fundamentals of sending emails
+  </Card>
+  <Card title="Templates" icon="file-code" href="/examples/templates">
+    Use email templates with dynamic variables
+  </Card>
+  <Card title="API Reference" icon="book" href="/api-reference/overview">
+    View complete API documentation
+  </Card>
+</CardGroup>

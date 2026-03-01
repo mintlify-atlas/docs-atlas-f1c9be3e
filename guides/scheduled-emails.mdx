@@ -1,0 +1,663 @@
+---
+title: 'Scheduled Emails'
+description: 'Schedule emails for future delivery and manage scheduled sends'
+---
+
+The Resend Go SDK allows you to schedule emails for future delivery, update scheduled send times, and cancel scheduled emails.
+
+## Quick Start
+
+Here's how to schedule an email for future delivery:
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/resend/resend-go/v3"
+)
+
+func main() {
+	ctx := context.Background()
+	apiKey := os.Getenv("RESEND_API_KEY")
+
+	client := resend.NewClient(apiKey)
+
+	// Schedule email for 1 hour from now
+	scheduledTime := time.Now().Add(1 * time.Hour)
+
+	params := &resend.SendEmailRequest{
+		To:          []string{"user@example.com"},
+		From:        "noreply@yourdomain.com",
+		Subject:     "Scheduled Email",
+		Text:        "This email was scheduled for delivery.",
+		ScheduledAt: scheduledTime.Format(time.RFC3339),
+	}
+
+	sent, err := client.Emails.SendWithContext(ctx, params)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Email scheduled with ID: %s\n", sent.Id)
+}
+```
+
+## Scheduling Emails
+
+### Using ScheduledAt Field
+
+Add the `ScheduledAt` field to your `SendEmailRequest` with an ISO 8601 formatted datetime:
+
+```go
+ctx := context.Background()
+
+// Schedule for a specific date and time
+params := &resend.SendEmailRequest{
+	To:          []string{"delivered@resend.dev"},
+	From:        "onboarding@resend.dev",
+	Subject:     "Hello from Golang",
+	Text:        "hello world",
+	ScheduledAt: "2024-09-05T11:52:01.858Z",
+}
+
+sent, err := client.Emails.SendWithContext(ctx, params)
+if err != nil {
+	panic(err)
+}
+
+fmt.Println("Scheduled email ID:", sent.Id)
+```
+
+Source: [examples/schedule_email.go:17](examples/schedule_email.go:17)
+
+<ParamField path="scheduledAt" type="string">
+  ISO 8601 datetime string (e.g., `2024-09-05T11:52:01.858Z`) specifying when the email should be sent.
+  
+  Must be in the future. The maximum scheduling window may vary - check Resend's documentation for current limits.
+</ParamField>
+
+Source: [emails.go:40](emails.go:40)
+
+### Formatting Schedule Times
+
+Use Go's `time` package to generate properly formatted ISO 8601 timestamps:
+
+<Tabs>
+  <Tab title="Relative Time">
+    ```go
+    import "time"
+    
+    // Schedule for 2 hours from now
+    scheduledTime := time.Now().Add(2 * time.Hour)
+    
+    params := &resend.SendEmailRequest{
+        // ... other fields
+        ScheduledAt: scheduledTime.Format(time.RFC3339),
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Specific Date">
+    ```go
+    import "time"
+    
+    // Schedule for a specific date and time
+    location, _ := time.LoadLocation("America/New_York")
+    scheduledTime := time.Date(2024, 12, 25, 9, 0, 0, 0, location)
+    
+    params := &resend.SendEmailRequest{
+        // ... other fields
+        ScheduledAt: scheduledTime.UTC().Format(time.RFC3339),
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Business Hours">
+    ```go
+    import "time"
+    
+    // Schedule for next business day at 9 AM
+    now := time.Now()
+    nextDay := now.AddDate(0, 0, 1)
+    
+    // Set to 9 AM
+    scheduledTime := time.Date(
+        nextDay.Year(), nextDay.Month(), nextDay.Day(),
+        9, 0, 0, 0, nextDay.Location(),
+    )
+    
+    params := &resend.SendEmailRequest{
+        // ... other fields
+        ScheduledAt: scheduledTime.Format(time.RFC3339),
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+  The `ScheduledAt` time must be in the future. Emails with past timestamps will be rejected.
+</Warning>
+
+## Updating Scheduled Emails
+
+You can reschedule an email before it's sent:
+
+```go
+ctx := context.Background()
+
+// Update the scheduled time
+updateParams := &resend.UpdateEmailRequest{
+	Id:          "49a3999c-0ce1-4ea6-ab68-afcd6dc2e794",
+	ScheduledAt: "2024-11-05T11:52:01.858Z",
+}
+
+updatedEmail, err := client.Emails.UpdateWithContext(ctx, updateParams)
+if err != nil {
+	panic(err)
+}
+
+fmt.Printf("Updated email: %s\n", updatedEmail.Id)
+fmt.Printf("Object: %s\n", updatedEmail.Object)
+```
+
+Source: [examples/schedule_email.go:32](examples/schedule_email.go:32)
+
+### UpdateEmailRequest Fields
+
+<ParamField path="id" type="string" required>
+  The ID of the scheduled email to update.
+</ParamField>
+
+<ParamField path="scheduledAt" type="string" required>
+  New ISO 8601 datetime for when the email should be sent.
+</ParamField>
+
+Source: [emails.go:55](emails.go:55)
+
+### Update Methods
+
+<CodeGroup>
+
+```go Update
+// Simple update without context
+updated, err := client.Emails.Update(params)
+if err != nil {
+	panic(err)
+}
+```
+
+```go UpdateWithContext
+// Update with context for timeout control
+ctx := context.TODO()
+updated, err := client.Emails.UpdateWithContext(ctx, params)
+if err != nil {
+	panic(err)
+}
+```
+
+</CodeGroup>
+
+Source: [emails.go:230](emails.go:230)
+
+<Note>
+  You can only update emails that haven't been sent yet. Once an email is sent, it cannot be modified.
+</Note>
+
+## Canceling Scheduled Emails
+
+Cancel a scheduled email before it's sent:
+
+```go
+ctx := context.Background()
+
+emailId := "49a3999c-0ce1-4ea6-ab68-afcd6dc2e794"
+
+canceled, err := client.Emails.CancelWithContext(ctx, emailId)
+if err != nil {
+	panic(err)
+}
+
+fmt.Printf("Canceled email: %s\n", canceled.Id)
+fmt.Printf("Object: %s\n", canceled.Object)
+```
+
+Source: [examples/schedule_email.go:44](examples/schedule_email.go:44)
+
+### Cancel Methods
+
+<CodeGroup>
+
+```go Cancel
+// Simple cancel without context
+canceled, err := client.Emails.Cancel(emailId)
+if err != nil {
+	panic(err)
+}
+```
+
+```go CancelWithContext
+// Cancel with context for timeout control
+ctx := context.TODO()
+canceled, err := client.Emails.CancelWithContext(ctx, emailId)
+if err != nil {
+	panic(err)
+}
+```
+
+</CodeGroup>
+
+Source: [emails.go:200](emails.go:200)
+
+### CancelScheduledEmailResponse
+
+<ParamField path="id" type="string">
+  The ID of the canceled email.
+</ParamField>
+
+<ParamField path="object" type="string">
+  Object type, typically `"email"`.
+</ParamField>
+
+Source: [emails.go:44](emails.go:44)
+
+<Warning>
+  You can only cancel emails that are still scheduled. Emails that have already been sent cannot be canceled.
+</Warning>
+
+## Common Use Cases
+
+<AccordionGroup>
+  <Accordion title="Reminder Emails">
+    ```go
+    // Schedule a reminder 24 hours before an event
+    eventTime, _ := time.Parse(time.RFC3339, "2024-12-25T14:00:00Z")
+    reminderTime := eventTime.Add(-24 * time.Hour)
+    
+    params := &resend.SendEmailRequest{
+        To:      []string{user.Email},
+        From:    "reminders@yourdomain.com",
+        Subject: "Event Reminder: Tomorrow at 2 PM",
+        Html: fmt.Sprintf(
+            "<h1>Reminder</h1><p>Your event is tomorrow at %s</p>",
+            eventTime.Format("3:04 PM MST"),
+        ),
+        ScheduledAt: reminderTime.Format(time.RFC3339),
+        Tags: []resend.Tag{
+            {Name: "type", Value: "reminder"},
+            {Name: "event_id", Value: eventID},
+        },
+    }
+    
+    sent, err := client.Emails.Send(params)
+    // Store sent.Id to cancel/update if event changes
+    ```
+  </Accordion>
+  
+  <Accordion title="Drip Campaign">
+    ```go
+    // Schedule a series of onboarding emails
+    signupTime := time.Now()
+    
+    emails := []struct {
+        delay   time.Duration
+        subject string
+        content string
+    }{
+        {24 * time.Hour, "Welcome!", "Day 1 welcome content"},
+        {72 * time.Hour, "Getting Started", "Day 3 getting started guide"},
+        {168 * time.Hour, "Tips & Tricks", "Day 7 advanced tips"},
+    }
+    
+    var scheduledIds []string
+    
+    for i, email := range emails {
+        scheduledTime := signupTime.Add(email.delay)
+        
+        params := &resend.SendEmailRequest{
+            To:          []string{user.Email},
+            From:        "onboarding@yourdomain.com",
+            Subject:     email.subject,
+            Html:        email.content,
+            ScheduledAt: scheduledTime.Format(time.RFC3339),
+            Tags: []resend.Tag{
+                {Name: "campaign", Value: "onboarding"},
+                {Name: "sequence", Value: fmt.Sprintf("%d", i+1)},
+                {Name: "user_id", Value: user.ID},
+            },
+        }
+        
+        sent, err := client.Emails.Send(params)
+        if err != nil {
+            // Handle error
+            continue
+        }
+        
+        scheduledIds = append(scheduledIds, sent.Id)
+    }
+    
+    // Store scheduledIds to cancel campaign if user unsubscribes
+    ```
+  </Accordion>
+  
+  <Accordion title="Scheduled Reports">
+    ```go
+    // Schedule weekly report every Monday at 9 AM
+    func scheduleWeeklyReport(ctx context.Context, client *resend.Client) (string, error) {
+        now := time.Now()
+        
+        // Calculate next Monday
+        daysUntilMonday := (8 - int(now.Weekday())) % 7
+        if daysUntilMonday == 0 {
+            daysUntilMonday = 7 // If today is Monday, schedule for next Monday
+        }
+        
+        nextMonday := now.AddDate(0, 0, daysUntilMonday)
+        scheduledTime := time.Date(
+            nextMonday.Year(), nextMonday.Month(), nextMonday.Day(),
+            9, 0, 0, 0, now.Location(),
+        )
+        
+        params := &resend.SendEmailRequest{
+            To:          []string{"team@example.com"},
+            From:        "reports@yourdomain.com",
+            Subject:     fmt.Sprintf("Weekly Report - %s", scheduledTime.Format("Jan 2")),
+            Html:        "<p>Your weekly report will be generated and sent.</p>",
+            ScheduledAt: scheduledTime.Format(time.RFC3339),
+            Tags: []resend.Tag{
+                {Name: "type", Value: "weekly_report"},
+            },
+        }
+        
+        sent, err := client.Emails.SendWithContext(ctx, params)
+        if err != nil {
+            return "", err
+        }
+        
+        return sent.Id, nil
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Canceling on User Action">
+    ```go
+    // Cancel scheduled email if user takes action
+    func handleUserConfirmation(ctx context.Context, client *resend.Client, scheduledEmailId string) error {
+        // User confirmed attendance, cancel the reminder
+        canceled, err := client.Emails.CancelWithContext(ctx, scheduledEmailId)
+        if err != nil {
+            return fmt.Errorf("failed to cancel reminder: %w", err)
+        }
+        
+        log.Printf("Canceled reminder email: %s", canceled.Id)
+        
+        // Send immediate confirmation instead
+        confirmParams := &resend.SendEmailRequest{
+            To:      []string{user.Email},
+            From:    "confirmations@yourdomain.com",
+            Subject: "Attendance Confirmed",
+            Html:    "<p>Thanks for confirming! See you there.</p>",
+        }
+        
+        _, err = client.Emails.SendWithContext(ctx, confirmParams)
+        return err
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Scheduling with Templates
+
+You can schedule template-based emails:
+
+```go
+ctx := context.Background()
+
+// Schedule a templated email
+scheduledTime := time.Now().Add(24 * time.Hour)
+
+params := &resend.SendEmailRequest{
+	To: []string{"user@example.com"},
+	Template: &resend.EmailTemplate{
+		Id: "welcome-email",
+		Variables: map[string]any{
+			"userName":    "Alice",
+			"companyName": "Acme Corp",
+		},
+	},
+	ScheduledAt: scheduledTime.Format(time.RFC3339),
+	Tags: []resend.Tag{
+		{Name: "campaign", Value: "welcome"},
+	},
+}
+
+sent, err := client.Emails.SendWithContext(ctx, params)
+if err != nil {
+	panic(err)
+}
+
+fmt.Printf("Scheduled templated email: %s\n", sent.Id)
+```
+
+## Scheduling Batch Emails
+
+Schedule multiple emails at once using batch send:
+
+```go
+ctx := context.Background()
+
+// Schedule for tomorrow at 10 AM
+tomorrow := time.Now().AddDate(0, 0, 1)
+scheduledTime := time.Date(
+	tomorrow.Year(), tomorrow.Month(), tomorrow.Day(),
+	10, 0, 0, 0, tomorrow.Location(),
+)
+
+batchEmails := []*resend.SendEmailRequest{
+	{
+		To:          []string{"user1@example.com"},
+		From:        "newsletter@yourdomain.com",
+		Subject:     "Monthly Newsletter",
+		Html:        "<p>Newsletter content...</p>",
+		ScheduledAt: scheduledTime.Format(time.RFC3339),
+	},
+	{
+		To:          []string{"user2@example.com"},
+		From:        "newsletter@yourdomain.com",
+		Subject:     "Monthly Newsletter",
+		Html:        "<p>Newsletter content...</p>",
+		ScheduledAt: scheduledTime.Format(time.RFC3339),
+	},
+}
+
+sent, err := client.Batch.SendWithContext(ctx, batchEmails)
+if err != nil {
+	panic(err)
+}
+
+fmt.Printf("Scheduled %d emails\n", len(sent.Data))
+```
+
+<Tip>
+  Batch scheduling is useful for sending newsletters or announcements to multiple recipients at a specific time.
+</Tip>
+
+## Error Handling
+
+Handle errors when scheduling, updating, or canceling emails:
+
+```go
+// Scheduling error handling
+params := &resend.SendEmailRequest{
+	To:          []string{"user@example.com"},
+	From:        "noreply@yourdomain.com",
+	Subject:     "Test",
+	Text:        "Test",
+	ScheduledAt: "invalid-date", // Invalid format
+}
+
+sent, err := client.Emails.Send(params)
+if err != nil {
+	// Handle invalid date format error
+	fmt.Printf("Failed to schedule: %v\n", err)
+	return
+}
+
+// Update error handling
+updateParams := &resend.UpdateEmailRequest{
+	Id:          "non-existent-id",
+	ScheduledAt: time.Now().Add(1 * time.Hour).Format(time.RFC3339),
+}
+
+updated, err := client.Emails.Update(updateParams)
+if err != nil {
+	// Handle email not found or already sent
+	fmt.Printf("Failed to update: %v\n", err)
+	return
+}
+
+// Cancel error handling
+canceled, err := client.Emails.Cancel("already-sent-id")
+if err != nil {
+	// Handle email already sent or not found
+	fmt.Printf("Failed to cancel: %v\n", err)
+	return
+}
+```
+
+## Best Practices
+
+<Steps>
+  <Step title="Use UTC for Scheduling">
+    Always convert to UTC when scheduling to avoid timezone issues:
+    
+    ```go
+    localTime := time.Date(2024, 12, 25, 9, 0, 0, 0, time.Local)
+    scheduledTime := localTime.UTC()
+    
+    ScheduledAt: scheduledTime.Format(time.RFC3339)
+    ```
+  </Step>
+  
+  <Step title="Store Email IDs">
+    Save scheduled email IDs to enable updates or cancellations:
+    
+    ```go
+    sent, err := client.Emails.Send(params)
+    if err != nil {
+        return err
+    }
+    
+    // Store in database for later reference
+    db.SaveScheduledEmail(user.ID, sent.Id, scheduledTime)
+    ```
+  </Step>
+  
+  <Step title="Add Scheduling Buffer">
+    Schedule emails with a buffer to account for processing time:
+    
+    ```go
+    // Add 5 minutes buffer
+    desiredTime := time.Date(2024, 12, 25, 9, 0, 0, 0, time.UTC)
+    scheduledTime := desiredTime.Add(-5 * time.Minute)
+    ```
+  </Step>
+  
+  <Step title="Tag Scheduled Emails">
+    Use tags to identify and track scheduled campaigns:
+    
+    ```go
+    Tags: []resend.Tag{
+        {Name: "scheduled", Value: "true"},
+        {Name: "campaign_id", Value: campaignID},
+        {Name: "send_date", Value: scheduledTime.Format("2006-01-02")},
+    }
+    ```
+  </Step>
+  
+  <Step title="Handle Timezone Conversions">
+    When working with user timezones, convert properly:
+    
+    ```go
+    userLocation, _ := time.LoadLocation(user.Timezone)
+    localTime := time.Date(2024, 12, 25, 9, 0, 0, 0, userLocation)
+    
+    params := &resend.SendEmailRequest{
+        // ...
+        ScheduledAt: localTime.UTC().Format(time.RFC3339),
+    }
+    ```
+  </Step>
+  
+  <Step title="Implement Cancellation Logic">
+    Build logic to cancel scheduled emails when events change:
+    
+    ```go
+    func cancelScheduledReminders(ctx context.Context, eventID string) error {
+        emailIDs := db.GetScheduledEmailsByEvent(eventID)
+        
+        for _, emailID := range emailIDs {
+            _, err := client.Emails.CancelWithContext(ctx, emailID)
+            if err != nil {
+                log.Printf("Failed to cancel %s: %v", emailID, err)
+                continue
+            }
+        }
+        
+        return nil
+    }
+    ```
+  </Step>
+</Steps>
+
+## Time Format Reference
+
+The SDK expects ISO 8601 format (RFC3339). Here are common formatting examples:
+
+```go
+import "time"
+
+// RFC3339 format (recommended)
+scheduledAt := time.Now().Format(time.RFC3339)
+// Output: "2024-09-05T11:52:01Z"
+
+// With timezone
+scheduledAt := time.Now().Format(time.RFC3339)
+// Output: "2024-09-05T11:52:01-05:00"
+
+// With milliseconds
+scheduledAt := time.Now().Format("2006-01-02T15:04:05.000Z07:00")
+// Output: "2024-09-05T11:52:01.858Z"
+
+// Custom format (ensure ISO 8601 compliance)
+scheduledAt := time.Now().UTC().Format("2006-01-02T15:04:05Z")
+// Output: "2024-09-05T11:52:01Z"
+```
+
+<Note>
+  Always use `time.RFC3339` or a compatible ISO 8601 format. Other formats may be rejected by the API.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Sending Emails" icon="paper-plane" href="/guides/sending-emails">
+    Learn the basics of sending emails
+  </Card>
+  
+  <Card title="Email Templates" icon="file-lines" href="/guides/email-templates">
+    Schedule template-based emails
+  </Card>
+  
+  <Card title="Batch Emails" icon="envelopes-bulk" href="/guides/batch-emails">
+    Schedule multiple emails at once
+  </Card>
+  
+  <Card title="Attachments" icon="paperclip" href="/guides/attachments">
+    Add attachments to scheduled emails
+  </Card>
+</CardGroup>

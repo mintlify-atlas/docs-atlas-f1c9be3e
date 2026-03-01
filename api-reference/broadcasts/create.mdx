@@ -1,0 +1,138 @@
+---
+title: 'Create broadcast'
+description: 'Create a new broadcast to send to your segment.'
+---
+
+Creates a new broadcast based on the provided parameters. By default, broadcasts are created as drafts. You can optionally send them immediately or schedule them for later.
+
+## Methods
+
+### Create
+
+```go
+Create(params *CreateBroadcastRequest) (CreateBroadcastResponse, error)
+```
+
+Creates a broadcast using the default background context.
+
+### CreateWithContext
+
+```go
+CreateWithContext(ctx context.Context, params *CreateBroadcastRequest) (CreateBroadcastResponse, error)
+```
+
+Creates a broadcast with a custom context for cancellation and timeout control.
+
+## Request
+
+<ParamField body="segment_id" type="string" required>
+  The ID of the segment to send the broadcast to.
+</ParamField>
+
+<ParamField body="from" type="string" required>
+  The sender email address.
+</ParamField>
+
+<ParamField body="subject" type="string" required>
+  The email subject line.
+</ParamField>
+
+<ParamField body="name" type="string">
+  A name to identify the broadcast.
+</ParamField>
+
+<ParamField body="html" type="string">
+  The HTML content of the email.
+</ParamField>
+
+<ParamField body="text" type="string">
+  The plain text content of the email.
+</ParamField>
+
+<ParamField body="reply_to" type="string[]">
+  An array of email addresses to set as reply-to addresses.
+</ParamField>
+
+<ParamField body="send" type="boolean">
+  Set to `true` to send the broadcast immediately upon creation instead of creating a draft.
+</ParamField>
+
+<ParamField body="scheduled_at" type="string">
+  Schedule the email to be sent later. Accepts natural language (e.g., "in 1 min") or ISO 8601 format (e.g., "2024-08-05T11:52:01.858Z"). Only valid when `send` is `true`.
+</ParamField>
+
+<ParamField body="audience_id" type="string" deprecated>
+  Deprecated. Use `segment_id` instead.
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  The unique identifier for the created broadcast.
+</ResponseField>
+
+## Example
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/resend/resend-go/v2"
+)
+
+func main() {
+    client := resend.NewClient("re_123456789")
+
+    params := &resend.CreateBroadcastRequest{
+        Name:      "Product Launch",
+        SegmentId: "seg_123456",
+        From:      "hello@example.com",
+        Subject:   "New Product Launch",
+        Html:      "<h1>Check out our new product!</h1>",
+        ReplyTo:   []string{"support@example.com"},
+    }
+
+    broadcast, err := client.Broadcasts.Create(params)
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("Broadcast ID:", broadcast.Id)
+}
+```
+
+## Example: Create and send immediately
+
+```go
+params := &resend.CreateBroadcastRequest{
+    Name:      "Newsletter",
+    SegmentId: "seg_123456",
+    From:      "hello@example.com",
+    Subject:   "Weekly Newsletter",
+    Html:      "<h1>This week's updates</h1>",
+    Send:      true,
+}
+
+broadcast, err := client.Broadcasts.Create(params)
+```
+
+## Example: Create and schedule
+
+```go
+params := &resend.CreateBroadcastRequest{
+    Name:        "Scheduled Newsletter",
+    SegmentId:   "seg_123456",
+    From:        "hello@example.com",
+    Subject:     "Weekly Newsletter",
+    Html:        "<h1>This week's updates</h1>",
+    Send:        true,
+    ScheduledAt: "2024-12-01T19:32:22.980Z",
+}
+
+broadcast, err := client.Broadcasts.Create(params)
+```
+
+<Info>
+  At least one of `html` or `text` must be provided. Both `segment_id` (or deprecated `audience_id`) and `from` are required fields.
+</Info>
