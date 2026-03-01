@@ -136,6 +136,7 @@
               "api-reference/broadcasts/create",
               "api-reference/broadcasts/get",
               "api-reference/broadcasts/list",
+              "api-reference/broadcasts/update",
               "api-reference/broadcasts/send",
               "api-reference/broadcasts/schedule",
               "api-reference/broadcasts/cancel",
@@ -148,6 +149,7 @@
               "api-reference/topics/create",
               "api-reference/topics/get",
               "api-reference/topics/list",
+              "api-reference/topics/update",
               "api-reference/topics/delete"
             ]
           },

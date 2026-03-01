@@ -1,0 +1,128 @@
+---
+title: 'Update topic'
+description: 'Update an existing topic'
+---
+
+## Update
+
+Update a topic using the default context.
+
+```go
+func (s *TopicsSvcImpl) Update(topicId string, params *UpdateTopicRequest) (*UpdateTopicResponse, error)
+```
+
+### Parameters
+
+<ParamField path="topicId" type="string" required>
+  The ID of the topic to update.
+</ParamField>
+
+<ParamField path="params" type="*UpdateTopicRequest" required>
+  The topic update parameters.
+</ParamField>
+
+### Returns
+
+Returns an `*UpdateTopicResponse` containing the updated topic ID.
+
+### Example
+
+```go
+updateParams := &resend.UpdateTopicRequest{
+  Name:        "Updated Newsletter",
+  Description: "Our updated monthly newsletter",
+}
+
+response, err := client.Topics.Update("topic_123", updateParams)
+if err != nil {
+  panic(err)
+}
+
+fmt.Println("Topic updated:", response.Id)
+```
+
+---
+
+## UpdateWithContext
+
+Update a topic with a custom context.
+
+```go
+func (s *TopicsSvcImpl) UpdateWithContext(ctx context.Context, topicId string, params *UpdateTopicRequest) (*UpdateTopicResponse, error)
+```
+
+### Parameters
+
+<ParamField path="ctx" type="context.Context" required>
+  Context for the request, useful for timeouts and cancellation.
+</ParamField>
+
+<ParamField path="topicId" type="string" required>
+  The ID of the topic to update.
+</ParamField>
+
+<ParamField path="params" type="*UpdateTopicRequest" required>
+  The topic update parameters.
+</ParamField>
+
+### Returns
+
+Returns an `*UpdateTopicResponse` containing the updated topic ID.
+
+### Example
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+defer cancel()
+
+updateParams := &resend.UpdateTopicRequest{
+  Name:        "Weekly Digest",
+  Description: "Weekly summary of top content",
+}
+
+response, err := client.Topics.UpdateWithContext(ctx, "topic_123", updateParams)
+if err != nil {
+  panic(err)
+}
+```
+
+---
+
+## Types
+
+### UpdateTopicRequest
+
+Request payload for updating a topic.
+
+```go
+type UpdateTopicRequest struct {
+  Name        string `json:"name,omitempty"`
+  Description string `json:"description,omitempty"`
+}
+```
+
+<ParamField path="Name" type="string">
+  The updated name of the topic.
+</ParamField>
+
+<ParamField path="Description" type="string">
+  The updated description of the topic.
+</ParamField>
+
+<Note>
+  The `default_subscription` field cannot be changed after topic creation.
+</Note>
+
+### UpdateTopicResponse
+
+Response from updating a topic.
+
+```go
+type UpdateTopicResponse struct {
+  Id string `json:"id"`
+}
+```
+
+<ResponseField name="Id" type="string">
+  The unique identifier of the updated topic.
+</ResponseField>

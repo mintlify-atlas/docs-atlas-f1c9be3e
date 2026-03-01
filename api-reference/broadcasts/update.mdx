@@ -1,0 +1,158 @@
+---
+title: 'Update broadcast'
+description: 'Update an existing broadcast'
+---
+
+## Update
+
+Update a broadcast using the default context.
+
+```go
+func (s *BroadcastsSvcImpl) Update(params *UpdateBroadcastRequest) (UpdateBroadcastResponse, error)
+```
+
+### Parameters
+
+<ParamField path="params" type="*UpdateBroadcastRequest" required>
+  The broadcast update parameters.
+</ParamField>
+
+### Returns
+
+Returns an `UpdateBroadcastResponse` containing the updated broadcast ID.
+
+### Example
+
+```go
+updateParams := &resend.UpdateBroadcastRequest{
+  BroadcastId: "broadcast_123",
+  Subject:     "Updated: Flash Sale Extended!",
+  Html:        "<h1>Sale extended by 24 hours!</h1>",
+  Text:        "Our flash sale has been extended!",
+}
+
+response, err := client.Broadcasts.Update(updateParams)
+if err != nil {
+  panic(err)
+}
+
+fmt.Println("Broadcast updated:", response.Id)
+```
+
+---
+
+## UpdateWithContext
+
+Update a broadcast with a custom context.
+
+```go
+func (s *BroadcastsSvcImpl) UpdateWithContext(ctx context.Context, params *UpdateBroadcastRequest) (UpdateBroadcastResponse, error)
+```
+
+### Parameters
+
+<ParamField path="ctx" type="context.Context" required>
+  Context for the request, useful for timeouts and cancellation.
+</ParamField>
+
+<ParamField path="params" type="*UpdateBroadcastRequest" required>
+  The broadcast update parameters.
+</ParamField>
+
+### Returns
+
+Returns an `UpdateBroadcastResponse` containing the updated broadcast ID.
+
+### Example
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+defer cancel()
+
+updateParams := &resend.UpdateBroadcastRequest{
+  BroadcastId: "broadcast_123",
+  Name:        "Summer Sale Campaign - Extended",
+  Subject:     "Last Chance: Summer Sale!",
+}
+
+response, err := client.Broadcasts.UpdateWithContext(ctx, updateParams)
+if err != nil {
+  panic(err)
+}
+```
+
+---
+
+## Types
+
+### UpdateBroadcastRequest
+
+Request payload for updating a broadcast.
+
+```go
+type UpdateBroadcastRequest struct {
+  BroadcastId string   `json:"broadcast_id,omitempty"`
+  SegmentId   string   `json:"segment_id,omitempty"`
+  AudienceId  string   `json:"audience_id,omitempty"` // Deprecated: Use SegmentId instead
+  From        string   `json:"from,omitempty"`
+  Subject     string   `json:"subject,omitempty"`
+  ReplyTo     []string `json:"reply_to,omitempty"`
+  Html        string   `json:"html,omitempty"`
+  Text        string   `json:"text,omitempty"`
+  Name        string   `json:"name,omitempty"`
+}
+```
+
+<ParamField path="BroadcastId" type="string" required>
+  The ID of the broadcast to update.
+</ParamField>
+
+<ParamField path="SegmentId" type="string">
+  The updated segment ID to send the broadcast to.
+</ParamField>
+
+<ParamField path="AudienceId" type="string">
+  **Deprecated:** Use `SegmentId` instead. Audiences have been renamed to Segments.
+</ParamField>
+
+<ParamField path="From" type="string">
+  The updated sender email address.
+</ParamField>
+
+<ParamField path="Subject" type="string">
+  The updated email subject line.
+</ParamField>
+
+<ParamField path="ReplyTo" type="[]string">
+  Updated array of reply-to email addresses.
+</ParamField>
+
+<ParamField path="Html" type="string">
+  The updated HTML content of the broadcast.
+</ParamField>
+
+<ParamField path="Text" type="string">
+  The updated plain text content of the broadcast.
+</ParamField>
+
+<ParamField path="Name" type="string">
+  The updated internal name for the broadcast.
+</ParamField>
+
+<Note>
+  You can only update broadcasts that are in "draft" status. Sent or scheduled broadcasts cannot be modified.
+</Note>
+
+### UpdateBroadcastResponse
+
+Response from updating a broadcast.
+
+```go
+type UpdateBroadcastResponse struct {
+  Id string `json:"id"`
+}
+```
+
+<ResponseField name="Id" type="string">
+  The unique identifier of the updated broadcast.
+</ResponseField>
